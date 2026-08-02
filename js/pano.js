@@ -69,8 +69,15 @@ function setup(canvas) {
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  // filtrage anisotrope : indispensable en visée rasante, sinon ça fourmille
+  const aniso = gl.getExtension('EXT_texture_filter_anisotropic')
+    || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
+  if (aniso) {
+    gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT,
+      Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+  }
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE,
     new Uint8Array([20, 28, 48]));
 
@@ -86,6 +93,10 @@ function setup(canvas) {
 }
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* Bornes de champ de vision : la panorama fait 1024 px pour 360°, zoomer
+   davantage ne révélerait aucun détail supplémentaire, seulement du flou. */
+const FOV_MIN = 1.05, FOV_MAX = 1.7;
 
 /**
  * Ouvre la visite en plein écran.
@@ -136,6 +147,7 @@ export function openPano(nodes, title = '') {
     img.onload = () => {
       gl.bindTexture(gl.TEXTURE_2D, gl.getParameter(gl.TEXTURE_BINDING_2D));
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
       root.querySelector('.pano-load').style.display = 'none';
     };
     img.onerror = () => { root.querySelector('.pano-load').textContent = 'Panorama indisponible'; };
@@ -161,7 +173,7 @@ export function openPano(nodes, title = '') {
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    fov = clamp(fov + e.deltaY * 0.0015, 0.5, 1.9);
+    fov = clamp(fov + e.deltaY * 0.0015, FOV_MIN, FOV_MAX);
   }, { passive: false });
 
   // pincement à deux doigts
@@ -170,7 +182,7 @@ export function openPano(nodes, title = '') {
     if (e.touches.length !== 2) return;
     const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
                          e.touches[0].clientY - e.touches[1].clientY);
-    if (pinch) fov = clamp(fov * (pinch / d), 0.5, 1.9);
+    if (pinch) fov = clamp(fov * (pinch / d), FOV_MIN, FOV_MAX);
     pinch = d;
   }, { passive: true });
   canvas.addEventListener('touchend', () => { pinch = 0; });
