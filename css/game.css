@@ -268,3 +268,89 @@ h1,h2,h3,h4{margin:0;font-weight:700}
   .view{padding-left:20px;padding-right:20px}
   .hud-cash strong{font-size:27px}
 }
+
+/* =========================================================
+   Composants de la v2 (clicker, slots, classement, luxe)
+   ========================================================= */
+
+.gold{color:var(--gold)}
+.hud-net-v{font-size:16px;font-weight:700}
+.hud-row-sub{gap:6px;justify-content:flex-start}
+.chip{
+  display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;
+  font-size:11px;font-weight:700;background:rgba(255,255,255,.06);
+  border:1px solid var(--line);color:var(--txt-dim);
+}
+.chip em{font-style:normal}
+.chip.gold{color:var(--gold);border-color:rgba(242,201,76,.35);background:rgba(242,201,76,.1)}
+
+/* --- Clicker --- */
+.tapwrap{margin-bottom:14px}
+.tap-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.tap-val{font-size:20px;color:var(--gold)}
+.tap-head b{font-size:16px;display:block}
+.taparea{
+  width:100%;aspect-ratio:1/.78;border-radius:24px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  background:radial-gradient(circle at 50% 40%, rgba(242,201,76,.18), rgba(18,26,48,.9) 65%);
+  border:1px solid rgba(242,201,76,.35);
+  box-shadow:inset 0 0 60px rgba(242,201,76,.08);
+  transition:transform .06s ease, box-shadow .15s;
+  user-select:none;
+}
+.taparea:active{transform:scale(.985);box-shadow:inset 0 0 90px rgba(242,201,76,.22)}
+.taparea.boosted{border-color:rgba(255,120,60,.6);background:radial-gradient(circle at 50% 40%, rgba(255,120,60,.25), rgba(18,26,48,.9) 65%)}
+.tap-ico{font-size:64px;line-height:1;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+.tap-hint{font-size:12px;color:var(--txt-dim);font-weight:600}
+
+/* --- Segments larges (sous-onglets) --- */
+.seg-wide{display:flex;width:100%;margin-bottom:12px}
+.seg-wide button{flex:1;padding:8px 4px;font-size:12.5px}
+
+/* --- Champs --- */
+.field{
+  width:100%;border-radius:12px;border:1px solid var(--line);
+  background:rgba(0,0,0,.3);color:var(--txt);padding:11px 12px;font-size:14px;font-weight:600;
+  font-family:inherit;
+}
+.field:focus{outline:2px solid rgba(242,201,76,.5)}
+.trade .field{height:44px;flex:1;min-width:0}
+
+/* --- Choix du type d'entreprise --- */
+.type-list{max-height:46dvh;overflow-y:auto;margin-top:12px;-webkit-overflow-scrolling:touch}
+.type{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:10px;border-radius:14px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);margin-bottom:8px;
+}
+.type:active{transform:scale(.99)}
+.type.locked{opacity:.45}
+.type-ico{font-size:24px;width:34px;text-align:center}
+.type b{display:block;font-size:13.5px}
+.type em{font-style:normal;display:block}
+
+/* --- Classement --- */
+.rank-card{background:linear-gradient(160deg,rgba(242,201,76,.14),var(--surface) 55%)}
+.rank-n{font-size:34px;line-height:1;color:var(--gold);font-weight:800}
+.rank-list{margin-top:12px;border-top:1px solid var(--line);padding-top:6px}
+.rank-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px}
+.rank-row+.rank-row{border-top:1px solid rgba(255,255,255,.04)}
+.rank-row.you{color:var(--gold);font-weight:700}
+.rank-i{width:30px;flex:none;text-align:right;color:var(--txt-dim);font-size:11px}
+.rank-row.you .rank-i{color:var(--gold)}
+.rank-row em{font-style:normal}
+
+/* --- Barre de répartition du patrimoine --- */
+.stack{display:flex;height:10px;border-radius:6px;overflow:hidden;margin-bottom:12px;background:rgba(255,255,255,.06)}
+.stack i{display:block;height:100%}
+.seg-cash{background:var(--gold)}
+.seg-business{background:var(--blue)}
+.seg-stocks{background:var(--green)}
+.seg-estate{background:var(--violet)}
+.seg-vehicles{background:#ff8a5c}
+.seg-items{background:#ff5f9e}
+.seg-islands{background:#31d0d6}
+.seg-crypto{background:#f7931a}
+
+/* Le tap ne doit jamais déclencher la sélection de texte */
+.taparea, .nav-btn, .btn, .type, .asset{ -webkit-user-select:none; user-select:none }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#0b1020">
-<meta name="description" content="Business Insider — jeu de gestion et d'investissement idle : entreprises, bourse, crypto et immobilier.">
+<meta name="description" content="Business Insider — simulateur d'investissement mobile : clic, entreprises, bourse, crypto, immobilier et luxe.">
 <title>Business Insider — Investor Tycoon</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -15,53 +15,40 @@
 </head>
 <body>
 
-<!-- Écran de chargement -->
 <div id="splash" class="splash">
   <div class="splash-logo">BUSINESS<span>INSIDER</span></div>
   <div class="splash-sub">Investor Tycoon · Web</div>
   <div class="splash-bar"><i></i></div>
 </div>
 
-<!-- Barre d'état haute -->
-<header class="hud" id="hud">
+<header class="hud">
   <div class="hud-row">
     <div class="hud-cash">
-      <span class="hud-label">Liquidités</span>
+      <span class="hud-label">Solde</span>
       <strong id="hud-cash">$0</strong>
     </div>
-    <div class="hud-net">
+    <div class="right">
       <span class="hud-label">Patrimoine</span>
-      <strong id="hud-net">$0</strong>
+      <strong id="hud-net" class="hud-net-v">$0</strong>
     </div>
   </div>
   <div class="hud-row hud-row-sub">
-    <div class="lvl">
-      <span class="lvl-badge" id="hud-level">1</span>
-      <div class="lvl-bar"><i id="hud-xp" style="width:0%"></i></div>
-      <span class="lvl-title" id="hud-title">Stagiaire</span>
-    </div>
-    <button class="hud-mult" id="hud-angels" type="button" title="Bonus actionnaires">
-      <span>◆</span><em id="hud-angels-val">+0%</em>
-    </button>
+    <span class="chip"><em class="up" id="hud-hr">$0</em>&nbsp;/h</span>
+    <span class="chip">🎫&nbsp;<em id="hud-tickets">0</em></span>
+    <span class="chip gold" id="hud-rank">#100</span>
   </div>
 </header>
 
-<!-- Bandeau d'actualités -->
-<div class="news" id="news"><span id="news-text">Les marchés ouvrent. Bienvenue à Wall Street.</span></div>
-
-<!-- Contenu principal -->
 <main id="view" class="view"></main>
 
-<!-- Navigation basse -->
-<nav class="nav" id="nav">
-  <button class="nav-btn is-active" data-tab="business" type="button"><span class="nav-ico">🏢</span><span>Business</span></button>
-  <button class="nav-btn" data-tab="stocks" type="button"><span class="nav-ico">📈</span><span>Bourse</span></button>
-  <button class="nav-btn" data-tab="estate" type="button"><span class="nav-ico">🏙️</span><span>Immo</span></button>
-  <button class="nav-btn" data-tab="crypto" type="button"><span class="nav-ico">₿</span><span>Crypto</span></button>
-  <button class="nav-btn" data-tab="profile" type="button"><span class="nav-ico">👤</span><span>Profil</span></button>
+<nav class="nav">
+  <button class="nav-btn" data-tab="business" type="button"><span class="nav-ico">🏢</span><span>Business</span></button>
+  <button class="nav-btn" data-tab="investments" type="button"><span class="nav-ico">📈</span><span>Investir</span></button>
+  <button class="nav-btn is-active" data-tab="earnings" type="button"><span class="nav-ico">💰</span><span>Gains</span></button>
+  <button class="nav-btn" data-tab="luxe" type="button"><span class="nav-ico">💎</span><span>Luxe</span></button>
+  <button class="nav-btn" data-tab="account" type="button"><span class="nav-ico">👤</span><span>Compte</span></button>
 </nav>
 
-<!-- Superpositions -->
 <div class="toasts" id="toasts"></div>
 <div class="sheet-wrap" id="sheet-wrap" hidden>
   <div class="sheet-backdrop" data-close="1"></div>

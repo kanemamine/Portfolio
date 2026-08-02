@@ -1,76 +1,87 @@
-/* Point d'entrée : boucle de jeu, entrées utilisateur, sauvegarde. */
+/* Point d'entrée : boucle de jeu, actions, cycle de vie. */
 
-import { BUSINESSES, PROPERTIES, ACHIEVEMENTS, UNLOCKS, levelInfo } from './data.js';
-import { createState, load, save, wipe, OFFLINE_CAP, SAVE_KEY } from './state.js';
-import * as G from './game.js';
-import * as M from './market.js';
+import * as D from './data.js';
+import * as E from './engine.js';
 import * as V from './views.js';
+import { createState, load, save, wipe, SAVE_KEY, OFFLINE_CAP } from './state.js';
 import { toast, floatGain, vibrate, openSheet, closeSheet, sheetOpen } from './ui.js';
-import { $, $$, money, fmt, dur, esc, clamp, rand } from './util.js';
+import { $, $$, money, fmt, dur, esc } from './util.js';
 
 const s = load();
 V.init(() => V.render(s));
 
-/* ---------------- Références HUD ---------------- */
 const el = {
-  cash: $('#hud-cash'), net: $('#hud-net'), level: $('#hud-level'),
-  xp: $('#hud-xp'), title: $('#hud-title'), angels: $('#hud-angels-val'),
-  news: $('#news'), newsText: $('#news-text'), nav: $('#nav'),
+  cash: $('#hud-cash'), net: $('#hud-net'), rank: $('#hud-rank'),
+  hr: $('#hud-hr'), tickets: $('#hud-tickets'),
 };
 
 /* ---------------- Démarrage ---------------- */
-
 function boot() {
-  const off = G.applyOffline(s);
-  if (off) M.fastForward(s, off.seconds);
-
-  setTab(s.tab || 'business', true);
+  const off = E.applyOffline(s);
+  setTab(s.tab || 'earnings', true);
   updateHUD();
-  refreshNav();
+  setTimeout(() => $('#splash').classList.add('hide'), 400);
 
-  setTimeout(() => $('#splash').classList.add('hide'), 450);
-
-  if (off && off.earned > 1) {
+  if (off && off.earned + off.dividends > 1) {
     setTimeout(() => openSheet(`
       <h3>Pendant votre absence 💼</h3>
       <p class="small muted" style="margin:6px 0 14px">
-        Vos managers et vos biens ont travaillé ${dur(off.seconds)}${off.capped ? ` (plafond de ${dur(OFFLINE_CAP)})` : ''}.
+        Vos sociétés et vos biens ont tourné ${dur(off.seconds)}${off.capped ? ` (plafond de ${dur(OFFLINE_CAP)})` : ''}.
       </p>
       <div class="card" style="text-align:center;margin:0">
-        <div class="tiny">Revenus hors-ligne</div>
-        <b style="font-size:26px;color:var(--gold)">${money(off.earned)}</b>
+        <div class="tiny">Revenus</div><b style="font-size:24px;color:var(--gold)">${money(off.earned)}</b>
+        ${off.dividends > 0 ? `<div class="tiny" style="margin-top:8px">Dividendes</div><b class="up">${money(off.dividends)}</b>` : ''}
       </div>
-      <button class="btn btn-gold btn-block" data-close="1" style="margin-top:14px">Encaisser</button>
-    `), 700);
+      <button class="btn btn-gold btn-block" data-close="1" style="margin-top:14px">Encaisser</button>`), 650);
+  } else if (!s.tutorial) {
+    setTimeout(() => {
+      openSheet(`
+        <h3>Bienvenue, patron 💼</h3>
+        <p class="small muted" style="margin:8px 0 6px">« Je vois du potentiel. On va vous rendre indécemment riche. »</p>
+        <p class="small muted" style="margin:0 0 14px">
+          Commencez par <b>toucher l’écran</b> pour gagner vos premiers dollars, améliorez votre gain par tap,
+          puis <b>fondez votre première société</b> pour lancer un revenu passif.
+        </p>
+        <button class="btn btn-gold btn-block" data-close="1">C’est parti</button>`);
+      s.tutorial = 1;
+    }, 600);
   }
 }
 
-/* ---------------- Boucle principale ---------------- */
-
+/* ---------------- Boucle ---------------- */
 let last = performance.now();
-let marketAcc = 0, uiAcc = 0, saveAcc = 0, achAcc = 0;
-let newsIn = rand(20, 45);
+let mAcc = 0, uiAcc = 0, saveAcc = 0, autoAcc = 0, trophyAcc = 0;
 
 function frame(now) {
-  const dt = Math.min((now - last) / 1000, 2); // rAF gelé en arrière-plan : cf. visibilitychange
+  const dt = Math.min((now - last) / 1000, 2);
   last = now;
 
-  G.tickBusinesses(s, dt);
-  G.tickEstate(s, dt);
-  s.stats.playTime += dt;
+  E.tick(s, dt);
 
-  marketAcc += dt * 1000;
-  while (marketAcc >= M.STEP_MS) { M.stepMarket(s); marketAcc -= M.STEP_MS; }
+  mAcc += dt;
+  while (mAcc >= D.MARKET_STEP) { E.stepMarkets(s); mAcc -= D.MARKET_STEP; }
 
-  newsIn -= dt;
-  if (newsIn <= 0) { showNews(M.fireNews(s)); newsIn = rand(35, 75); }
+  if (Date.now() >= s.dividendAt) {
+    const paid = E.payDividends(s);
+    s.dividendAt = Date.now() + D.DIVIDEND_PERIOD * 1000;
+    if (paid > 0) toast(`💵 Dividendes encaissés : ${money(paid)}`, 'gold');
+  }
 
-  achAcc += dt;
-  if (achAcc >= 1) { achAcc = 0; checkAchievements(); trackRecords(); refreshNav(); }
+  if (E.autoclickActive(s)) {
+    autoAcc += dt * D.AUTOCLICK_RATE;
+    while (autoAcc >= 1) { E.tap(s); autoAcc -= 1; }
+  }
+
+  trophyAcc += dt;
+  if (trophyAcc >= 1) {
+    trophyAcc = 0;
+    const r = E.ranking(s);
+    if (r.rank < s.rankBest) s.rankBest = r.rank;
+    for (const t of E.checkTrophies(s)) toast(`${t.icon} Trophée : ${t.name}`, 'gold');
+  }
 
   uiAcc += dt;
-  const uiStep = s.tab === 'business' ? 0 : 0.25;
-  if (uiAcc >= uiStep) { uiAcc = 0; updateHUD(); V.update(s); }
+  if (uiAcc >= 0.25) { uiAcc = 0; updateHUD(); if (!sheetOpen()) V.update(s); }
 
   saveAcc += dt;
   if (saveAcc >= 15) { saveAcc = 0; save(s); }
@@ -78,290 +89,249 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-/* ---------------- HUD & navigation ---------------- */
-
+/* ---------------- HUD ---------------- */
 function updateHUD() {
-  const nw = G.netWorth(s);
-  const lv = levelInfo(nw);
   el.cash.textContent = money(s.cash);
-  el.net.textContent = money(nw);
-  el.level.textContent = lv.level;
-  el.xp.style.width = (lv.progress * 100).toFixed(1) + '%';
-  el.title.textContent = lv.title;
-  el.angels.textContent = '+' + (s.angels * 2).toFixed(0) + '%';
-}
-
-function trackRecords() {
-  const nw = G.netWorth(s);
-  if (nw > s.stats.bestNetWorth) s.stats.bestNetWorth = nw;
-}
-
-function refreshNav() {
-  for (const btn of $$('.nav-btn')) {
-    const tab = btn.dataset.tab;
-    const locked = !G.isUnlocked(s, tab);
-    btn.classList.toggle('locked', locked);
-    btn.classList.toggle('is-active', tab === s.tab);
-  }
+  el.net.textContent = money(E.netWorth(s));
+  el.hr.textContent = money(E.incomePerHour(s));
+  el.rank.textContent = '#' + E.ranking(s).rank;
+  el.tickets.textContent = s.tickets;
 }
 
 function setTab(tab, silent = false) {
   s.tab = tab;
-  refreshNav();
+  for (const b of $$('.nav-btn')) b.classList.toggle('is-active', b.dataset.tab === tab);
   V.render(s);
   if (!silent) vibrate(5);
 }
 
-function showNews(text) {
-  el.newsText.textContent = text;
-  el.news.classList.add('flash');
-  setTimeout(() => el.news.classList.remove('flash'), 4000);
-}
-
-/* ---------------- Succès ---------------- */
-
-function checkAchievements() {
-  const ctx = { netWorth: G.netWorth(s) };
-  for (const a of ACHIEVEMENTS) {
-    if (s.achievements[a.id]) continue;
-    let ok = false;
-    try { ok = a.test(s, ctx); } catch (e) { ok = false; }
-    if (ok) {
-      s.achievements[a.id] = true;
-      toast(`${a.icon} Succès débloqué : ${a.name}`, 'gold');
-      vibrate(15);
-    }
-  }
-}
+const need = () => toast('Fonds insuffisants', 'bad');
+const numField = (sel) => parseFloat(($(sel) || {}).value);
 
 /* ---------------- Actions ---------------- */
-
-const ACTIONS = {
-  goto: (d) => setTab(d.tab),
-
-  mode: (d) => {
-    s.buyMode = d.mode === 'max' ? 'max' : parseInt(d.mode, 10);
-    V.render(s);
+const A = {
+  /* --- clicker --- */
+  tap: (d, e) => {
+    const g = E.tap(s);
+    if (e && e.clientX) floatGain(e.clientX, e.clientY, '+' + money(g));
+    el.cash.textContent = money(s.cash);
+    vibrate(4);
+  },
+  levelup: () => { if (E.levelUpClick(s)) { toast('Niveau de revenu amélioré', 'good'); vibrate(12); } else need(); },
+  boost: () => {
+    s.boostUntil = Date.now() + D.BOOST_SECONDS * 1000;
+    toast(`🔥 Gain par tap ×${D.BOOST_MULT} pendant ${D.BOOST_SECONDS} s`, 'gold');
+  },
+  autoclick: () => {
+    s.autoclickUntil = Date.now() + D.AUTOCLICK_SECONDS * 1000;
+    toast('🤖 Auto-clic activé', 'good');
+  },
+  daily: () => {
+    if (!V.canClaimDaily(s)) return;
+    const r = D.DAILY_REWARDS[s.daily.index % D.DAILY_REWARDS.length];
+    if (r.kind === 'cash') s.cash += r.value;
+    else if (r.kind === 'pctCash') s.cash += E.netWorth(s) * r.value;
+    else if (r.kind === 'ticket') s.tickets += r.value;
+    else if (r.kind === 'autoclick') s.autoclickUntil = Date.now() + r.value * 1000;
+    else if (r.kind === 'item') {
+      const col = D.COLLECTIONS[Math.floor(Math.random() * D.COLLECTIONS.length)];
+      const free = E.collectionItems(col).filter((i) => !s.items[i.key]);
+      if (free.length) { s.items[free[0].key] = free[0].price; toast(`🎁 Offert : ${free[0].name}`, 'gold'); }
+      else s.cash += 100e3;
+    }
+    s.daily.day = Math.floor(Date.now() / 864e5);
+    s.daily.index += 1;
+    toast(`🎁 ${r.name}`, 'gold');
   },
 
-  run: (d, e) => {
-    const st = s.businesses[d.id];
-    if (st.owned <= 0) { toast('Achetez d’abord une unité.', 'bad'); return; }
-    if (st.manager) { toast('Un manager s’en occupe déjà ✓'); return; }
-    if (G.startCycle(s, d.id)) vibrate(6);
-  },
-
-  runall: () => {
-    let n = 0;
-    for (const b of BUSINESSES) if (G.startCycle(s, b.id)) n++;
-    toast(n ? `${n} production${n > 1 ? 's' : ''} lancée${n > 1 ? 's' : ''}` : 'Rien à lancer');
-  },
-
-  buy: (d, e) => {
-    const res = G.buyBusiness(s, d.id);
-    if (!res) { toast('Fonds insuffisants', 'bad'); return; }
-    vibrate(8);
-    floatGain(e.clientX, e.clientY, '+' + res.count);
-    V.update(s);
-  },
-
-  mgr: (d) => {
-    const b = BUSINESSES.find((x) => x.id === d.id);
-    if (G.hireManager(s, d.id)) {
-      toast(`🧑‍💼 Manager engagé : ${b.name} tourne en continu`, 'good');
-      vibrate(12);
-    } else toast('Fonds insuffisants', 'bad');
-  },
-
-  asset: (d) => V.openAssetSheet(s, d.id),
-
-  'q-buy': (d) => {
-    const input = $('#s-amt');
-    if (input) input.value = Math.floor(s.cash * (parseInt(d.p, 10) / 100));
-  },
-
-  'buy-asset': (d) => {
-    const input = $('#s-amt');
-    const amount = parseFloat(input && input.value);
-    if (!(amount > 0)) { toast('Saisissez un montant', 'bad'); return; }
-    const res = G.buyAsset(s, d.id, amount);
-    if (!res) { toast('Fonds insuffisants', 'bad'); return; }
-    input.value = '';
-    toast(`Acheté ${res.units.toFixed(4)} ${d.id} · frais ${money(res.fee)}`, 'good');
-    vibrate(8);
-    V.update(s);
-  },
-
-  'q-sell': (d) => {
-    const st = s.assets[d.id];
-    if (!(st.q > 0)) { toast('Aucune position', 'bad'); return; }
-    const res = G.sellAsset(s, d.id, st.q * (parseInt(d.p, 10) / 100));
-    if (!res) return;
-    toast(`Vendu ${money(res.net)} · ${res.pnl >= 0 ? '+' : ''}${money(res.pnl)}`, res.pnl >= 0 ? 'good' : 'bad');
-    vibrate(8);
-    V.update(s);
-  },
-
-  buyprop: (d) => {
-    const p = PROPERTIES.find((x) => x.id === d.id);
-    if (G.buyProperty(s, d.id)) { toast(`🔑 ${p.name} acquis à ${p.city}`, 'good'); vibrate(12); }
-    else toast('Fonds insuffisants', 'bad');
-  },
-
-  upgrade: (d) => {
-    if (G.upgradeProperty(s, d.id)) { toast('🔨 Bien amélioré', 'good'); vibrate(8); }
-    else toast('Fonds insuffisants', 'bad');
-  },
-
-  prestige: () => {
-    const gain = G.pendingAngels(s);
-    if (gain <= 0) return;
-    openSheet(`
-      <h3>Revendre l'empire ?</h3>
-      <p class="small muted" style="margin:6px 0 14px">
-        Vous perdez vos liquidités, entreprises, positions et biens.
-        Vous conservez vos succès et gagnez <b class="up">◆ ${fmt(gain)}</b> actionnaires,
-        soit <b>+${((s.angels + gain) * 2).toFixed(0)} %</b> de revenus permanents.
-      </p>
-      <button class="btn btn-gold btn-block" data-act="prestige-go">Confirmer la revente</button>
-      <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Annuler</button>
-    `);
-  },
-
-  'prestige-go': () => {
-    const gain = G.pendingAngels(s);
-    const keep = {
-      angels: s.angels + gain,
-      achievements: s.achievements,
-      createdAt: s.createdAt,
-      runs: (s.runs || 0) + 1,
-    };
-    const fresh = createState(keep);
-    fresh.stats.playTime = s.stats.playTime;
-    fresh.stats.trades = s.stats.trades;
-    fresh.stats.bestGain = s.stats.bestGain;
-    fresh.stats.bestNetWorth = s.stats.bestNetWorth;
-    Object.assign(s, fresh);
-    save(s);
+  /* --- entreprises --- */
+  found: () => V.sheetFound(s),
+  'found-go': (d) => {
+    const name = ($('#biz-name') || {}).value || '';
+    const b = E.foundBusiness(s, d.id, name.trim());
+    if (!b) return need();
     closeSheet();
-    setTab('business');
-    toast(`◆ +${fmt(gain)} actionnaires — nouveau départ !`, 'gold');
+    toast(`🏢 ${b.name} est lancée`, 'good');
+    vibrate(14);
+  },
+  buyslot: () => { if (E.buySlot(s)) toast('Emplacement supplémentaire acquis', 'good'); else need(); },
+  lvlup: (d) => { if (E.upgradeBusiness(s, +d.uid)) vibrate(8); else need(); },
+  project: (d) => { if (E.startProject(s, +d.uid)) toast('🔨 Chantier lancé', 'good'); else need(); },
+  rush: (d) => {
+    if (E.rushProject(s, +d.uid)) toast('Chantier terminé', 'good');
+    else toast('Aucun accélérateur disponible', 'bad');
+  },
+  bizmenu: (d) => V.sheetBizMenu(s, +d.uid),
+  spec: (d) => V.sheetSpec(s, +d.uid),
+  'spec-go': (d) => { if (E.setSpec(s, +d.uid, d.spec)) { closeSheet(); toast('Spécialisation modifiée', 'good'); } else need(); },
+  'merge-go': (d) => {
+    const b = E.mergeBusinesses(s, +d.a, +d.b);
+    if (b) { closeSheet(); toast(`🤝 Fusion : ${b.name}`, 'gold'); }
+  },
+  'close-go': (d) => {
+    const r = E.closeBusiness(s, +d.uid);
+    closeSheet();
+    toast(`Société fermée, ${money(r)} récupérés`);
   },
 
+  /* --- navigation secondaire --- */
+  sub: (d) => { s.sub[d.tab] = d.sub; V.render(s); },
+
+  /* --- actions --- */
+  stock: (d) => V.sheetStock(s, d.id),
+  'stock-q': (d) => {
+    const a = D.STOCKS.find((x) => x.id === d.id);
+    const max = s.cash / E.stockPrice(s, a);
+    const f = $('#s-qty');
+    if (f) f.value = Math.floor(max * (+d.p / 100) * 1e4) / 1e4;
+  },
+  'stock-buy': (d) => {
+    const q = numField('#s-qty');
+    if (!(q > 0)) return toast('Saisissez une quantité', 'bad');
+    const r = E.buyStock(s, d.id, q);
+    if (!r) return need();
+    toast(`Acheté ${fmt(r.qty)} ${d.id} pour ${money(r.total)}`, 'good');
+    V.sheetStock(s, d.id);
+  },
+  'stock-sell': (d) => {
+    const st = s.stocks[d.id];
+    const r = E.sellStock(s, d.id, st.qty * (+d.p / 100));
+    if (!r) return toast('Aucune position', 'bad');
+    toast(`Vendu ${money(r.total)} · ${r.pnl >= 0 ? '+' : ''}${money(r.pnl)}`, r.pnl >= 0 ? 'good' : 'bad');
+    V.sheetStock(s, d.id);
+  },
+
+  /* --- crypto --- */
+  crypto: (d) => V.sheetCrypto(s, d.id),
+  'crypto-q': (d) => { const f = $('#c-amt'); if (f) f.value = Math.floor(s.cash * (+d.p / 100)); },
+  'crypto-buy': (d) => {
+    const amt = numField('#c-amt');
+    if (!(amt > 0)) return toast('Saisissez un montant', 'bad');
+    const r = E.buyCrypto(s, d.id, amt);
+    if (!r) return need();
+    toast(`Acheté ${fmt(r.qty)} ${d.id}`, 'good');
+    V.sheetCrypto(s, d.id);
+  },
+  'crypto-sell': (d) => {
+    const st = s.cryptos[d.id];
+    const r = E.sellCrypto(s, d.id, st.qty * (+d.p / 100));
+    if (!r) return toast('Aucune position', 'bad');
+    toast(`Vendu ${money(r.net)} · ${r.pnl >= 0 ? '+' : ''}${money(r.pnl)}`, r.pnl >= 0 ? 'good' : 'bad');
+    V.sheetCrypto(s, d.id);
+  },
+
+  /* --- immobilier --- */
+  buyestate: (d) => { if (E.buyEstate(s, d.id)) { toast('🔑 Bien acquis', 'good'); vibrate(12); } else need(); },
+  sellestate: (d) => {
+    const net = E.sellEstate(s, d.id);
+    toast(`Vendu ${money(net)} (taxe ${(D.ESTATE_TAX * 100).toFixed(0)} %)`);
+  },
+  upgrades: (d) => V.sheetUpgrades(s, d.id),
+  'upgrade-go': (d) => {
+    if (E.upgradeEstate(s, d.id, d.up)) { toast('🛠️ Amélioration effectuée', 'good'); V.sheetUpgrades(s, d.id); }
+    else need();
+  },
+
+  /* --- luxe --- */
+  vehicle: (d) => { cfg = { trim: 'basic', engine: 'std', id: d.id }; V.sheetVehicle(s, d.id); },
+  cfg: (d, e) => {
+    cfg[d.k] = d.v;
+    const box = e.target.closest('.seg');
+    for (const b of box.querySelectorAll('button')) b.classList.toggle('on', b.dataset.v === d.v);
+    const v = D.VEHICLES.find((x) => x.id === cfg.id);
+    const t = $('#v-total');
+    if (t) t.textContent = money(E.vehiclePrice(v, cfg.trim, cfg.engine));
+  },
+  'vehicle-buy': (d) => {
+    const o = E.buyVehicle(s, d.id, cfg.trim, cfg.engine);
+    if (!o) return need();
+    closeSheet();
+    toast('🔑 Livré dans votre flotte', 'good');
+    vibrate(14);
+  },
+  sellvehicle: (d) => { const n = E.sellVehicle(s, +d.uid); toast(`Revendu ${money(n)}`); },
+  buyitem: (d) => { if (E.buyItem(s, d.key, +d.price)) { toast('🖼️ Pièce acquise', 'good'); vibrate(10); } else need(); },
+  buyisland: (d) => { if (E.buyIsland(s, d.id)) { toast('🏝 Île acquise', 'gold'); vibrate(16); } else need(); },
+  sellisland: (d) => { const n = E.sellIsland(s, d.id); toast(`Île vendue ${money(n)}`); },
+
+  /* --- sauvegarde --- */
   export: () => {
     const data = btoa(unescape(encodeURIComponent(JSON.stringify(s))));
-    openSheet(`
-      <h3>Exporter la sauvegarde</h3>
-      <p class="small muted" style="margin:6px 0 10px">Copiez ce code pour restaurer votre partie ailleurs.</p>
-      <textarea id="exp" readonly style="width:100%;height:120px;border-radius:12px;background:rgba(0,0,0,.3);
-        color:var(--txt);border:1px solid var(--line);padding:10px;font-size:11px">${esc(data)}</textarea>
+    openSheet(`<h3>Exporter la sauvegarde</h3>
+      <p class="small muted" style="margin:6px 0 10px">Conservez ce code pour restaurer la partie ailleurs.</p>
+      <textarea id="exp" class="field" readonly style="height:120px">${esc(data)}</textarea>
       <button class="btn btn-gold btn-block" data-act="copy" style="margin-top:10px">Copier</button>
-      <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Fermer</button>
-    `);
+      <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Fermer</button>`);
   },
-
   copy: () => {
     const ta = $('#exp');
     ta.select();
-    const done = () => toast('Copié dans le presse-papiers', 'good');
-    if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(done, () => toast('Copie manuelle requise', 'bad'));
-    else { document.execCommand('copy'); done(); }
+    const ok = () => toast('Copié', 'good');
+    if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(ok, () => toast('Copie manuelle requise', 'bad'));
+    else { document.execCommand('copy'); ok(); }
   },
-
   import: () => {
-    openSheet(`
-      <h3>Importer une sauvegarde</h3>
-      <p class="small muted" style="margin:6px 0 10px">Collez un code d'export. La partie en cours sera remplacée.</p>
-      <textarea id="imp" style="width:100%;height:120px;border-radius:12px;background:rgba(0,0,0,.3);
-        color:var(--txt);border:1px solid var(--line);padding:10px;font-size:11px"></textarea>
+    openSheet(`<h3>Importer une sauvegarde</h3>
+      <p class="small muted" style="margin:6px 0 10px">La partie en cours sera remplacée.</p>
+      <textarea id="imp" class="field" style="height:120px"></textarea>
       <button class="btn btn-green btn-block" data-act="import-go" style="margin-top:10px">Importer</button>
-      <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Annuler</button>
-    `);
+      <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Annuler</button>`);
   },
-
   'import-go': () => {
     try {
-      const raw = decodeURIComponent(escape(atob($('#imp').value.trim())));
-      const data = JSON.parse(raw);
-      if (!data || typeof data !== 'object' || !data.businesses) throw new Error('format');
+      const data = JSON.parse(decodeURIComponent(escape(atob($('#imp').value.trim()))));
+      if (!data || typeof data !== 'object' || !('cash' in data)) throw new Error('format');
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       closeSheet();
       toast('Sauvegarde importée, rechargement…', 'good');
-      setTimeout(() => location.reload(), 700);
-    } catch (e) {
-      toast('Code invalide', 'bad');
-    }
+      setTimeout(() => location.reload(), 600);
+    } catch (e) { toast('Code invalide', 'bad'); }
   },
-
   reset: () => {
-    openSheet(`
-      <h3>Tout réinitialiser ?</h3>
-      <p class="small muted" style="margin:6px 0 14px">
-        Progression, actionnaires et succès seront définitivement effacés.
-      </p>
+    openSheet(`<h3>Tout réinitialiser ?</h3>
+      <p class="small muted" style="margin:6px 0 14px">Progression, trophées et patrimoine seront effacés.</p>
       <button class="btn btn-red btn-block" data-act="reset-go">Effacer ma partie</button>
-      <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Annuler</button>
-    `);
+      <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Annuler</button>`);
   },
-
-  'reset-go': () => {
-    wipe();
-    location.reload();
-  },
+  'reset-go': () => { wipe(); location.reload(); },
 };
 
-/* ---------------- Délégation d'événements ---------------- */
+let cfg = { trim: 'basic', engine: 'std', id: null };
 
+/* ---------------- Délégation ---------------- */
 document.addEventListener('click', (e) => {
   const nav = e.target.closest('.nav-btn');
-  if (nav) { setTab(nav.dataset.tab); return; }
+  if (nav) return setTab(nav.dataset.tab);
 
   const t = e.target.closest('[data-act]');
-  if (!t || !t.dataset.act) return;
-  const fn = ACTIONS[t.dataset.act];
+  if (!t || t.disabled) return;
+  const fn = A[t.dataset.act];
   if (!fn) return;
   fn(t.dataset, e);
   updateHUD();
-  if (!sheetOpen()) V.update(s);
+  // le tap et la configuration ne doivent pas reconstruire la vue
+  if (!['tap', 'cfg', 'stock-q', 'crypto-q', 'copy'].includes(t.dataset.act) && !sheetOpen()) V.render(s);
 });
-
-/* Bonus actionnaires : raccourci vers le profil. */
-$('#hud-angels').addEventListener('click', () => setTab('profile'));
 
 /* ---------------- Cycle de vie ---------------- */
-
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    save(s);
-  } else {
-    // rAF est gelé en arrière-plan : on rattrape le temps écoulé.
-    const off = G.applyOffline(s);
-    if (off) {
-      M.fastForward(s, off.seconds);
-      if (off.earned > 1) toast(`+${money(off.earned)} pendant votre absence`, 'gold');
-    }
-    last = performance.now();
-    V.render(s);
-    updateHUD();
-  }
+  if (document.hidden) { save(s); return; }
+  const off = E.applyOffline(s);
+  if (off && off.earned > 1) toast(`+${money(off.earned)} pendant votre absence`, 'gold');
+  last = performance.now();
+  V.render(s);
+  updateHUD();
 });
-
 window.addEventListener('pagehide', () => save(s));
 window.addEventListener('beforeunload', () => save(s));
-
-/* Empêche le zoom par double-tap sur les boutons de jeu. */
 document.addEventListener('dblclick', (e) => { if (e.target.closest('[data-act]')) e.preventDefault(); });
 
-/* ---------------- Service worker ---------------- */
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => { /* hors-ligne non critique */ });
-  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 
-/* Console de développement (uniquement en local) : window.RL.s, RL.save(), RL.G… */
 if (['localhost', '127.0.0.1', ''].includes(location.hostname)) {
-  window.RL = { s, save: () => save(s), render: () => V.render(s), G, M, V };
+  window.RL = { s, save: () => save(s), render: () => V.render(s), E, D };
 }
 
 boot();

@@ -1,67 +1,64 @@
 # Business Insider — Investor Tycoon
 
-Jeu web **mobile-first** de gestion et d'investissement idle, dans la lignée du jeu mobile
-*RichLife: Investor tycoon game*. Aucun clone open source n'existait : le jeu est écrit de zéro
-en **HTML / CSS / JavaScript vanilla (modules ES)**, sans dépendance ni build.
+Simulateur d'investissement web **mobile-first**, reconstruit d'après la structure réelle du jeu
+mobile *RichLife: Investor tycoon game* (v1.9.9). Écrit en **HTML / CSS / JavaScript vanilla
+(modules ES)**, sans dépendance ni build.
 
 🎮 **Jouer : [kanemamine.github.io/Portfolio](https://kanemamine.github.io/Portfolio/)**
 
 > Projet indépendant, sans lien avec le média *Business Insider*.
 
-## Contenu du jeu
+## Les cinq onglets
 
-| Système | Détail |
+| Onglet | Contenu |
 |---|---|
-| 🏢 **Entreprises** | 10 secteurs (food truck → datacenter IA), coût géométrique, paliers x2 à 25/50/100/200…, managers pour l'automatisation |
-| 📈 **Bourse** | 8 actions sectorielles, marche aléatoire avec retour à la moyenne, frais 0,25 %, PRU et plus-value latente |
-| ₿ **Crypto** | 5 actifs très volatils dont un stablecoin, frais 0,50 % |
-| 🏙️ **Immobilier** | 10 biens dans le monde, revenu horaire passif, 10 niveaux d'amélioration |
-| ◆ **Prestige** | Revente de l'empire contre des *actionnaires* : +2 % de revenus permanents chacun |
-| 💤 **Idle / hors-ligne** | Production continue, gains hors-ligne plafonnés à 8 h |
-| 📰 **Événements** | Actualités qui provoquent des chocs de prix par secteur |
-| 🏆 **Méta** | Niveaux et titres de carrière, 12 succès, statistiques, export/import de sauvegarde |
+| 💰 **Gains** | Clicker : gain par tap, 15 niveaux de revenu (×1,5 par palier), revenu passif = 6 × le gain par tap, boost ×5 (30 s), auto-clic (60 s), récompense quotidienne |
+| 🏢 **Business** | 16 secteurs fondables dans des **emplacements limités**, société **nommée librement**, capitalisation, 35 niveaux, **projets à étapes** (coût + durée réelle, accélérateur), **fusion** de sociétés, fermeture contre 30 % de la capitalisation, spécialisation du garage |
+| 📈 **Investir** | **Actions** : 15 sociétés, **dividendes toutes les 3 h** au taux propre à chacune, part du capital détenue · **Crypto** : 10 actifs, capitalisation et offre en circulation, frais 0,5 % · **Immobilier** : 20 biens dans le monde, **loyer = 1,61 %/h du prix**, 5 améliorations, taxe de revente 12 % |
+| 💎 **Luxe** | Voitures, aéronefs et yachts **configurables** (finition × motorisation), flotte revendable · 9 collections thématiques · 10 îles privées (commission de vente 8 %) |
+| 👤 **Compte** | **Classement mondial** face à 100 concurrents en 5 paliers, répartition du patrimoine, gains par source, 32 trophées, statistiques, export/import |
+
+Le jeu tourne hors ligne (production plafonnée à 8 h) et s'installe en PWA.
+
+## Origine de l'équilibrage
+
+Les ordres de grandeur proviennent de l'analyse des `ScriptableObject` du jeu de référence
+(Unity IL2CPP, décodage binaire des assets sérialisés) : progression du clicker, rendement locatif,
+taux de dividende, capitalisations, coûts de fondation par secteur. Les textes, visuels et noms
+d'objets de l'original ne sont pas repris — contenu et habillage sont propres à ce projet.
 
 ## Lancer en local
-
-Les modules ES et le service worker exigent HTTP (pas d'ouverture en `file://`) :
 
 ```bash
 python3 -m http.server 8080
 # puis http://localhost:8080 (mode mobile dans les devtools)
 ```
 
-Le jeu est installable en PWA (manifeste + service worker) et fonctionne hors-ligne.
-En local, `window.RL` expose l'état et le moteur pour faciliter l'équilibrage.
-
-## Déploiement
-
-GitHub Pages sert la branche `main` à la racine du dépôt : tout commit sur `main`
-met le jeu en ligne. Le fichier `.nojekyll` désactive le traitement Jekyll.
+En local, `window.RL` expose l'état (`RL.s`), le moteur (`RL.E`) et les données (`RL.D`).
 
 ## Structure
 
 ```
-index.html            coquille : HUD, bandeau news, vue, barre d'onglets
-css/game.css          thème sombre « fintech », mobile-first, safe-areas iOS
-js/data.js            données statiques (entreprises, actifs, biens, succès, news)
-js/state.js           création / sauvegarde / migration de la partie (localStorage)
-js/game.js            économie : coûts, revenus, cycles, trading, prestige, hors-ligne
-js/market.js          simulation des cours et événements de marché
-js/views.js           rendu et mise à jour des onglets
-js/ui.js              toasts, feuille modale, graphiques canvas
-js/main.js            boucle de jeu, actions, cycle de vie
-sw.js                 cache hors-ligne
+index.html       coquille : HUD, vue, barre d'onglets
+css/game.css     thème sombre mobile-first, safe-areas iOS
+js/data.js       toutes les données et constantes d'équilibrage
+js/state.js      création / sauvegarde / migration (localStorage)
+js/engine.js     économie : clic, sociétés, marchés, immobilier, luxe, classement, trophées
+js/views.js      rendu des cinq onglets et des feuilles modales
+js/ui.js         toasts, feuille modale, graphiques canvas
+js/main.js       boucle de jeu, actions, cycle de vie
+sw.js            cache hors-ligne
 ```
 
-## Équilibrage
+## Déploiement
 
-Les constantes économiques sont regroupées dans `js/data.js` (coûts, revenus, durées de cycle,
-volatilités, seuils de déblocage) — c'est le point d'entrée pour ajuster la difficulté.
+GitHub Pages sert la branche `main` à la racine : tout commit sur `main` met le jeu en ligne.
+`.nojekyll` désactive le traitement Jekyll.
 
 ## Pistes d'amélioration
 
-- Employés et compétences par entreprise
-- Ordres à cours limité, effet de levier, dividendes
-- Prêts bancaires et risque de faillite
-- Classement en ligne et parties multijoueurs
-- Objectifs quotidiens et coffres à récompenses
+- Mini-jeux par secteur (combats MMA, atelier du garage, lancements spatiaux)
+- Ordres à cours limité, effet de levier, actualités de marché
+- Carte du monde interactive pour l'immobilier
+- Objectifs quotidiens et saisons
+- Classement en ligne entre joueurs
