@@ -97,7 +97,7 @@ function step(now) {
   if (uiAcc >= 0.25) { uiAcc = 0; updateHUD(); if (!sheetOpen()) V.update(s); }
 
   saveAcc += dt;
-  if (saveAcc >= 15) { saveAcc = 0; save(s); }
+  if (saveAcc >= 15) { saveAcc = 0; persist(); }
 }
 
 /* ---------------- HUD ---------------- */
@@ -115,6 +115,12 @@ function setTab(tab, silent = false) {
   V.render(s);
   if (!silent) vibrate(5);
 }
+
+/* Un import ou une remise à zéro écrit directement dans le stockage puis
+   recharge. Il faut alors empêcher la sauvegarde de sortie d'écraser ce qu'on
+   vient d'écrire avec la partie encore en mémoire. */
+let persistEnabled = true;
+const persist = () => { if (persistEnabled) save(s); };
 
 const need = () => toast('Fonds insuffisants', 'bad');
 const numField = (sel) => parseFloat(($(sel) || {}).value);
@@ -299,6 +305,7 @@ const A = {
     try {
       const data = JSON.parse(decodeURIComponent(escape(atob($('#imp').value.trim()))));
       if (!data || typeof data !== 'object' || !('cash' in data)) throw new Error('format');
+      persistEnabled = false;
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
       closeSheet();
       toast('Sauvegarde importée, rechargement…', 'good');
@@ -311,7 +318,7 @@ const A = {
       <button class="btn btn-red btn-block" data-act="reset-go">Effacer ma partie</button>
       <button class="btn btn-block btn-ghost" data-close="1" style="margin-top:8px">Annuler</button>`);
   },
-  'reset-go': () => { wipe(); location.reload(); },
+  'reset-go': () => { persistEnabled = false; wipe(); location.reload(); },
 };
 
 let cfg = { trim: 'basic', engine: 'std', id: null };
@@ -333,15 +340,15 @@ document.addEventListener('click', (e) => {
 
 /* ---------------- Cycle de vie ---------------- */
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { save(s); return; }
+  if (document.hidden) { persist(); return; }
   const off = E.applyOffline(s);
   if (off && off.earned > 1) toast(`+${money(off.earned)} pendant votre absence`, 'gold');
   last = performance.now();
   V.render(s);
   updateHUD();
 });
-window.addEventListener('pagehide', () => save(s));
-window.addEventListener('beforeunload', () => save(s));
+window.addEventListener('pagehide', persist);
+window.addEventListener('beforeunload', persist);
 document.addEventListener('dblclick', (e) => { if (e.target.closest('[data-act]')) e.preventDefault(); });
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
