@@ -4,7 +4,7 @@ import * as D from './data.js';
 import * as E from './engine.js';
 import { fmt, money, price as fmtPrice, qty as fmtQty, pct, dur, esc, $, clamp } from './util.js';
 import { sparkline, chart, openSheet } from './ui.js';
-import { houseSVG } from './art.js';
+import { houseScene } from './art.js';
 
 const view = $('#view');
 let refresh = () => {};
@@ -235,9 +235,9 @@ function estateCard(s, b) {
   const done = D.UPGRADES.filter((u) => st.up[u.id]).length;
   return `
   <div class="card estate ${!st.owned && s.cash < b.price ? 'locked' : ''}">
-    <div class="house-thumb">
-      ${houseSVG(b, st.owned ? st.up : {})}
-      ${st.owned ? `<span class="house-tag">${done}/5 améliorations</span>` : '<span class="house-tag muted-tag">À vendre</span>'}
+    <div class="estate-media">
+      ${houseScene(b, st.owned ? st.up : {})}
+      <span class="house-tag ${st.owned ? '' : 'muted-tag'}">${st.owned ? `${done}/5 améliorations` : 'À vendre'}</span>
     </div>
     <div class="row" style="margin-top:10px">
       <div class="grow">
@@ -537,7 +537,7 @@ export function sheetUpgrades(s, id) {
   const b = byId(D.BUILDINGS, id);
   const st = s.estates[id];
   openSheet(`
-    <div class="house-thumb big">${houseSVG(b, st.up)}</div>
+    ${houseScene(b, st.up, true)}
     <h3 style="margin-top:12px">${esc(b.city)}</h3>
     <div class="kv"><span>Loyer actuel</span><b class="up">${money(E.rentOf(s, b))} / h</b></div>
     <div class="kv"><span>Valeur de marché</span><b>${money(b.price)}</b></div>
