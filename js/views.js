@@ -21,6 +21,7 @@ function renderEarnings(s) {
   const next = E.nextClickTier(s);
   const boost = E.boostActive(s);
   const auto = E.autoclickActive(s);
+  boostSig = `${boost}|${auto}`;
 
   view.innerHTML = `
     <div class="tapwrap">
@@ -48,7 +49,7 @@ function renderEarnings(s) {
       <div class="kv"><span>Revenu passif</span><b class="up">${money(tier.idle)} / h</b></div>
       ${next ? `
         <div class="kv"><span>Niveau suivant</span><b>${money(next.tap)} / tap · ${money(next.idle)} / h</b></div>
-        <button class="btn btn-block ${s.cash >= next.cost ? 'btn-gold' : ''}" data-act="levelup" ${s.cash >= next.cost ? '' : 'disabled'}>
+        <button class="btn btn-block btn-gold" data-act="levelup" data-cost="${next.cost}">
           Améliorer — ${money(next.cost)}
         </button>`
         : '<p class="small muted" style="margin:8px 0 0">Niveau maximal atteint ✦</p>'}
@@ -72,10 +73,22 @@ function renderEarnings(s) {
 
 export const canClaimDaily = (s) => Math.floor(Date.now() / 864e5) > s.daily.day;
 
+/* Signature des bonus en cours : sert à détecter leur expiration. */
+let boostSig = '';
+
 function updateEarnings(s) {
   const t = $('#f-tap'), h = $('#f-hr');
   if (t) t.textContent = money(E.clickValue(s));
   if (h) h.textContent = money(E.incomePerHour(s));
+
+  const boost = E.boostActive(s), auto = E.autoclickActive(s);
+  const sig = `${boost}|${auto}`;
+  if (sig !== boostSig) { boostSig = sig; refresh(); return; }   // un bonus vient de finir
+
+  const bb = view.querySelector('[data-act="boost"]');
+  const ab = view.querySelector('[data-act="autoclick"]');
+  if (bb && boost) bb.textContent = `🔥 ×${D.BOOST_MULT} — ${Math.ceil((s.boostUntil - Date.now()) / 1000)}s`;
+  if (ab && auto) ab.textContent = `🤖 ${Math.ceil((s.autoclickUntil - Date.now()) / 1000)}s`;
 }
 
 /* =================================================================
@@ -90,7 +103,7 @@ function renderBusiness(s) {
         <b>${used} / ${s.slots} emplacements</b>
         <div class="small muted">Chaque emplacement accueille une société.</div>
       </div>
-      <button class="btn btn-sm" data-act="buyslot">+1 — ${money(D.slotCost(s.slots))}</button>
+      <button class="btn btn-sm" data-act="buyslot" data-cost="${D.slotCost(s.slots)}">+1 — ${money(D.slotCost(s.slots))}</button>
     </div>
     <button class="btn btn-gold btn-block" data-act="found" style="margin-bottom:12px" ${used >= s.slots ? 'disabled' : ''}>
       ${used >= s.slots ? 'Aucun emplacement libre' : '＋ Fonder une entreprise'}
@@ -125,12 +138,12 @@ function bizCard(s, b) {
            🎫 Terminer maintenant (${s.tickets})</button>`
       : st
         ? `<div class="row" style="gap:8px;margin-top:8px">
-             <button class="btn btn-sm grow" data-act="project" data-uid="${b.uid}">
+             <button class="btn btn-sm grow" data-act="project" data-uid="${b.uid}" data-cost="${E.stageCost(b)}">
                🔨 ${esc(st.name)} — ${money(E.stageCost(b))}</button>
            </div>`
         : '<div class="small muted" style="margin-top:8px">Tous les projets sont achevés ✦</div>'}
     <div class="row" style="gap:6px;margin-top:8px">
-      <button class="btn btn-sm grow" data-act="lvlup" data-uid="${b.uid}">↑ Niveau — ${money(E.bizLevelCost(b))}</button>
+      <button class="btn btn-sm grow" data-act="lvlup" data-uid="${b.uid}" data-cost="${E.bizLevelCost(b)}">↑ Niveau — ${money(E.bizLevelCost(b))}</button>
       ${t.spec ? `<button class="btn btn-sm" data-act="spec" data-uid="${b.uid}">⚙️</button>` : ''}
       <button class="btn btn-sm" data-act="bizmenu" data-uid="${b.uid}">⋯</button>
     </div>
@@ -253,8 +266,8 @@ function estateCard(s, b) {
            <button class="btn btn-sm grow" data-act="upgrades" data-id="${b.id}">🛠️ Améliorations ${done}/5</button>
            <button class="btn btn-sm" data-act="sellestate" data-id="${b.id}">Vendre</button>
          </div>`
-      : `<button class="btn btn-sm btn-block ${s.cash >= b.price ? 'btn-gold' : ''}" data-act="buyestate" data-id="${b.id}"
-           style="margin-top:8px" ${s.cash >= b.price ? '' : 'disabled'}>Acheter — ${money(b.price)}</button>`}
+      : `<button class="btn btn-sm btn-block btn-gold" data-act="buyestate" data-id="${b.id}"
+           data-cost="${b.price}" style="margin-top:8px">Acheter — ${money(b.price)}</button>`}
   </div>`;
 }
 
@@ -300,8 +313,8 @@ function renderLuxe(s) {
             <div class="small muted">${money(i.price)}</div></div>
           ${s.items[i.key]
             ? '<span class="pos-badge">acquis ✦</span>'
-            : `<button class="btn btn-sm ${s.cash >= i.price ? 'btn-gold' : ''}" data-act="buyitem"
-                 data-key="${i.key}" data-price="${i.price}" ${s.cash >= i.price ? '' : 'disabled'}>Acheter</button>`}
+            : `<button class="btn btn-sm btn-gold" data-act="buyitem"
+                 data-key="${i.key}" data-price="${i.price}" data-cost="${i.price}">Acheter</button>`}
         </div>`).join('')}</div>`;
     }).join('');
   } else {
@@ -314,8 +327,8 @@ function renderLuxe(s) {
             <div class="small muted">${esc(i.sea)}</div></div>
           ${s.islands[i.id]
             ? `<button class="btn btn-sm" data-act="sellisland" data-id="${i.id}">Vendre ${money(i.price * (1 - D.ISLAND_FEE))}</button>`
-            : `<button class="btn btn-sm ${s.cash >= i.price ? 'btn-gold' : ''}" data-act="buyisland" data-id="${i.id}"
-                 ${s.cash >= i.price ? '' : 'disabled'}>${money(i.price)}</button>`}
+            : `<button class="btn btn-sm btn-gold" data-act="buyisland" data-id="${i.id}"
+                 data-cost="${i.price}">${money(i.price)}</button>`}
         </div>
       </div>`).join('');
   }
@@ -581,7 +594,15 @@ export function render(s) {
   }[s.tab] || renderEarnings)(s);
 }
 
+/** Réévalue en continu les boutons payants : le solde bouge à chaque tap. */
+function refreshAffordable(s) {
+  for (const el of view.querySelectorAll('[data-cost]')) {
+    el.disabled = s.cash < +el.dataset.cost;
+  }
+}
+
 export function update(s) {
+  refreshAffordable(s);
   if (s.tab === 'earnings') updateEarnings(s);
   else if (s.tab === 'business') updateBusiness(s);
   else if (s.tab === 'investments' && s.sub.investments === 'stocks') {

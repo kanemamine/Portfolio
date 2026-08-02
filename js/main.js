@@ -55,6 +55,17 @@ let last = performance.now();
 let mAcc = 0, uiAcc = 0, saveAcc = 0, autoAcc = 0, trophyAcc = 0;
 
 function frame(now) {
+  // Toute exception ici tuerait la boucle et figerait le jeu jusqu'au
+  // rechargement : on l'isole et on continue.
+  try {
+    step(now);
+  } catch (err) {
+    console.error('boucle de jeu', err);
+  }
+  requestAnimationFrame(frame);
+}
+
+function step(now) {
   const dt = Math.min((now - last) / 1000, 2);
   last = now;
 
@@ -87,8 +98,6 @@ function frame(now) {
 
   saveAcc += dt;
   if (saveAcc >= 15) { saveAcc = 0; save(s); }
-
-  requestAnimationFrame(frame);
 }
 
 /* ---------------- HUD ---------------- */
