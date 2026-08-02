@@ -1,6 +1,6 @@
 /* Service worker : coquille applicative en cache pour le jeu hors-ligne. */
 
-const CACHE = 'richlife-v1';
+const CACHE = 'business-insider-v1';
 const ASSETS = [
   './',
   './index.html',

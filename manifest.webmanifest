@@ -1,6 +1,6 @@
 {
-  "name": "RichLife Web — Investor Tycoon",
-  "short_name": "RichLife",
+  "name": "Business Insider — Investor Tycoon",
+  "short_name": "Business Insider",
   "description": "Jeu de gestion et d'investissement idle : entreprises, bourse, crypto et immobilier.",
   "start_url": "./index.html",
   "scope": "./",

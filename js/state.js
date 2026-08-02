@@ -2,7 +2,7 @@
 
 import { BUSINESSES, ASSETS, PROPERTIES } from './data.js';
 
-export const SAVE_KEY = 'richlife.save.v1';
+export const SAVE_KEY = 'businessinsider.save.v1';
 export const SAVE_VERSION = 1;
 export const HISTORY_LEN = 90;   // points conservés par actif
 export const OFFLINE_CAP = 8 * 3600; // 8 h de gains hors-ligne
