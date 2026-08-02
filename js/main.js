@@ -21,6 +21,7 @@ function boot() {
   const off = E.applyOffline(s);
   setTab(s.tab || 'earnings', true);
   updateHUD();
+  window.__BOOTED = true;          // désarme le filet de sécurité de index.html
   setTimeout(() => $('#splash').classList.add('hide'), 400);
 
   if (off && off.earned + off.dividends > 1) {
@@ -335,7 +336,11 @@ window.addEventListener('beforeunload', () => save(s));
 document.addEventListener('dblclick', (e) => { if (e.target.closest('[data-act]')) e.preventDefault(); });
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      if (reg.waiting) reg.waiting.postMessage('skip-waiting');
+    }).catch(() => {});
+  });
 }
 
 if (['localhost', '127.0.0.1', ''].includes(location.hostname)) {

@@ -55,6 +55,37 @@
   <section class="sheet" id="sheet" role="dialog" aria-modal="true"></section>
 </div>
 
+<script>
+/* Filet de sécurité au démarrage.
+
+   Si un ancien service worker sert du code périmé, les modules plantent et le
+   jeu reste bloqué sur l'écran de chargement. Passé ce délai sans démarrage,
+   on purge les caches, on désinscrit les service workers et on recharge — une
+   seule fois, pour ne jamais boucler. */
+(function () {
+  var KEY = 'bi.selfheal';
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      if (window.__BOOTED) { try { sessionStorage.removeItem(KEY); } catch (e) {} return; }
+      if (sessionStorage.getItem(KEY)) {
+        var el = document.querySelector('.splash-sub');
+        if (el) el.textContent = 'Échec du démarrage — videz le cache du navigateur';
+        return;
+      }
+      try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+      var done = function () { location.reload(); };
+      var jobs = [];
+      if (window.caches) jobs.push(caches.keys().then(function (k) {
+        return Promise.all(k.map(function (n) { return caches.delete(n); }));
+      }));
+      if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+        return Promise.all(rs.map(function (r) { return r.unregister(); }));
+      }));
+      Promise.all(jobs).then(done, done);
+    }, 6000);
+  });
+})();
+</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
