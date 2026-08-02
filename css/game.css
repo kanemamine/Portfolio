@@ -382,3 +382,39 @@ h1,h2,h3,h4{margin:0;font-weight:700}
 }
 .house-tag.muted-tag{color:var(--txt-dim)}
 .card.estate{padding:10px}
+
+/* --- Visite 360° --- */
+body.pano-open{overflow:hidden}
+.pano{position:fixed;inset:0;z-index:150;background:#05080f;touch-action:none}
+.pano-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+.pano-canvas:active{cursor:grabbing}
+.pano-top{
+  position:absolute;top:0;left:0;right:0;z-index:2;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:calc(var(--safe-t) + 12px) 14px 12px;
+  background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);
+}
+.pano-title{font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.pano-close{
+  width:36px;height:36px;border-radius:50%;flex:none;
+  background:rgba(0,0,0,.45);color:#fff;font-size:15px;backdrop-filter:blur(6px);
+}
+.pano-hint{
+  position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);z-index:2;
+  font-size:12px;color:#fff;opacity:.85;pointer-events:none;white-space:nowrap;
+  padding:7px 14px;border-radius:20px;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);
+  text-shadow:0 1px 6px rgba(0,0,0,.8);transition:opacity .4s;
+}
+.pano-nodes{
+  position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 18px);z-index:2;
+  display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 14px;
+}
+.pano-node{
+  padding:9px 16px;border-radius:22px;font-size:12.5px;font-weight:700;color:#fff;
+  background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);
+}
+.pano-node.on{background:var(--gold);color:#241a00;border-color:transparent}
+.pano-load{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
+  font-size:12px;color:#fff;opacity:.8;
+}

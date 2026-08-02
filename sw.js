@@ -1,6 +1,6 @@
 /* Service worker : coquille applicative en cache pour le jeu hors-ligne. */
 
-const CACHE = 'business-insider-v1';
+const CACHE = 'business-insider-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -8,13 +8,14 @@ const ASSETS = [
   './icon.svg',
   './css/game.css',
   './js/main.js',
-  './js/game.js',
   './js/state.js',
   './js/data.js',
-  './js/market.js',
   './js/views.js',
   './js/ui.js',
   './js/util.js',
+  './js/art.js',
+  './js/pano.js',
+  './js/engine.js',
 ];
 
 self.addEventListener('install', (e) => {

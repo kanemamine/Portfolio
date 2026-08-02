@@ -5,6 +5,7 @@ import * as E from './engine.js';
 import * as V from './views.js';
 import { createState, load, save, wipe, SAVE_KEY, OFFLINE_CAP } from './state.js';
 import { toast, floatGain, vibrate, openSheet, closeSheet, sheetOpen } from './ui.js';
+import { openPano } from './pano.js';
 import { $, $$, money, fmt, dur, esc } from './util.js';
 
 const s = load();
@@ -227,6 +228,13 @@ const A = {
     toast(`Vendu ${money(net)} (taxe ${(D.ESTATE_TAX * 100).toFixed(0)} %)`);
   },
   upgrades: (d) => V.sheetUpgrades(s, d.id),
+  tour: (d) => {
+    const b = D.BUILDINGS.find((x) => x.id === d.id);
+    if (!b || !b.tour) return;
+    openPano(Array.from({ length: b.tour }, (_, i) => ({
+      src: `img/pano/${b.id}-${i}.webp`, label: D.TOUR_NODES[i] || `Vue ${i + 1}`,
+    })), `${b.city} — ${b.country}`);
+  },
   'upgrade-go': (d) => {
     if (E.upgradeEstate(s, d.id, d.up)) { toast('🛠️ Amélioration effectuée', 'good'); V.sheetUpgrades(s, d.id); }
     else need();

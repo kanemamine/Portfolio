@@ -156,7 +156,7 @@ export const BUILDINGS = [
   { id: 'b9',  city: 'Belgrade',       country: 'Serbie',      price: 450e3,  year: 1363, style: 'townhouse', climate: 'temperate' },
   { id: 'b10', city: 'Le Cap',         country: 'Afrique du Sud', price: 1e6, year: 1618, style: 'villa',     climate: 'coastal' },
   { id: 'b11', city: 'New York',       country: 'États-Unis',  price: 17.5e6, year: 1288, style: 'tower',     climate: 'urban' },
-  { id: 'b12', city: 'Monaco',         country: 'Monaco',      price: 30e6,   year: 1979, style: 'villa',     climate: 'coastal' },
+  { id: 'b12', city: 'Monaco',         country: 'Monaco',      price: 30e6,   year: 1979, style: 'villa',     climate: 'coastal', tour: 3 },
   { id: 'b13', city: 'Beverly Hills',  country: 'États-Unis',  price: 55e6,   year: 1279, style: 'villa',     climate: 'warm' },
   { id: 'b14', city: 'Canberra',       country: 'Australie',   price: 90e6,   year: 1434, style: 'villa',     climate: 'temperate' },
   { id: 'b15', city: 'Tokyo',          country: 'Japon',       price: 150e6,  year: 1616, style: 'tower',     climate: 'urban' },
@@ -166,6 +166,9 @@ export const BUILDINGS = [
   { id: 'b19', city: 'Dubaï',          country: 'Émirats',     price: 2.7e9,  year: 1509, style: 'tower',     climate: 'desert' },
   { id: 'b20', city: 'Zermatt',        country: 'Suisse',      price: 3.8e9,  year: 1898, style: 'chalet',    climate: 'mountain' },
 ];
+
+/** Étapes de la visite 360°, dans l'ordre des nœuds générés. */
+export const TOUR_NODES = ['Extérieur', 'Intérieur', 'Terrasse', 'Jardin'];
 
 /** 5 améliorations, toutes visibles sur la scène du bien. */
 export const UPGRADES = [

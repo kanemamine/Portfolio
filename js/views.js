@@ -541,6 +541,8 @@ export function sheetUpgrades(s, id) {
     <h3 style="margin-top:12px">${esc(b.city)}</h3>
     <div class="kv"><span>Loyer actuel</span><b class="up">${money(E.rentOf(s, b))} / h</b></div>
     <div class="kv"><span>Valeur de marché</span><b>${money(b.price)}</b></div>
+    ${b.tour ? `<button class="btn btn-block btn-gold" data-act="tour" data-id="${id}" style="margin-top:12px">
+      🧭 Visiter en 360°</button>` : ''}
     <div class="tiny" style="margin:14px 0 6px">Améliorations — chacune apparaît sur la propriété</div>
     ${D.UPGRADES.map((u) => {
       const done = !!st.up[u.id];
