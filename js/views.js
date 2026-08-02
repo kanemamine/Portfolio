@@ -4,6 +4,7 @@ import * as D from './data.js';
 import * as E from './engine.js';
 import { fmt, money, price as fmtPrice, qty as fmtQty, pct, dur, esc, $, clamp } from './util.js';
 import { sparkline, chart, openSheet } from './ui.js';
+import { houseSVG } from './art.js';
 
 const view = $('#view');
 let refresh = () => {};
@@ -233,9 +234,12 @@ function estateCard(s, b) {
   const st = s.estates[b.id];
   const done = D.UPGRADES.filter((u) => st.up[u.id]).length;
   return `
-  <div class="card ${!st.owned && s.cash < b.price ? 'locked' : ''}">
-    <div class="row">
-      <div class="biz-ico">${b.icon}</div>
+  <div class="card estate ${!st.owned && s.cash < b.price ? 'locked' : ''}">
+    <div class="house-thumb">
+      ${houseSVG(b, st.owned ? st.up : {})}
+      ${st.owned ? `<span class="house-tag">${done}/5 améliorations</span>` : '<span class="house-tag muted-tag">À vendre</span>'}
+    </div>
+    <div class="row" style="margin-top:10px">
       <div class="grow">
         <div class="biz-name ell">${esc(b.city)}</div>
         <div class="small muted ell">${esc(b.country)} · bâti en ${b.year}</div>
@@ -533,16 +537,17 @@ export function sheetUpgrades(s, id) {
   const b = byId(D.BUILDINGS, id);
   const st = s.estates[id];
   openSheet(`
-    <h3>${esc(b.city)}</h3>
+    <div class="house-thumb big">${houseSVG(b, st.up)}</div>
+    <h3 style="margin-top:12px">${esc(b.city)}</h3>
     <div class="kv"><span>Loyer actuel</span><b class="up">${money(E.rentOf(s, b))} / h</b></div>
     <div class="kv"><span>Valeur de marché</span><b>${money(b.price)}</b></div>
-    <div class="tiny" style="margin:14px 0 6px">Améliorations</div>
+    <div class="tiny" style="margin:14px 0 6px">Améliorations — chacune apparaît sur la propriété</div>
     ${D.UPGRADES.map((u) => {
       const done = !!st.up[u.id];
       const cost = b.price * u.costRate;
       return `<button class="btn btn-block ${done ? 'btn-ghost' : s.cash >= cost ? 'btn-green' : ''}"
         data-act="upgrade-go" data-id="${id}" data-up="${u.id}" style="margin-bottom:8px" ${done || s.cash < cost ? 'disabled' : ''}>
-        ${done ? '✓ ' : ''}${esc(u.name)} · +${(u.bonus * 100).toFixed(0)} %${done ? '' : ' — ' + money(cost)}</button>`;
+        ${u.icon} ${done ? '✓ ' : ''}${esc(u.name)} · +${(u.bonus * 100).toFixed(0)} %${done ? '' : ' — ' + money(cost)}</button>`;
     }).join('')}
     <button class="btn btn-block btn-ghost" data-close="1">Fermer</button>`);
 }

@@ -354,3 +354,18 @@ h1,h2,h3,h4{margin:0;font-weight:700}
 
 /* Le tap ne doit jamais déclencher la sélection de texte */
 .taparea, .nav-btn, .btn, .type, .asset{ -webkit-user-select:none; user-select:none }
+
+/* --- Scènes immobilières (SVG en calques) --- */
+.house-thumb{
+  position:relative;width:100%;aspect-ratio:400/230;border-radius:14px;overflow:hidden;
+  background:#0d1424;border:1px solid var(--line);
+}
+.house-thumb.big{aspect-ratio:400/230;border-radius:16px}
+.house{width:100%;height:100%;display:block}
+.house-tag{
+  position:absolute;left:8px;bottom:8px;padding:3px 8px;border-radius:8px;
+  font-size:10px;font-weight:700;background:rgba(8,12,24,.72);color:var(--gold);
+  backdrop-filter:blur(4px);
+}
+.house-tag.muted-tag{color:var(--txt-dim)}
+.card.estate{padding:10px}

@@ -145,35 +145,35 @@ export const CRYPTOS = [
 /** 20 biens : le loyer horaire vaut 1,61 % du prix. */
 export const RENT_RATE = 0.0161;
 export const BUILDINGS = [
-  { id: 'b1',  city: 'Stavropol',      country: 'Russie',      price: 35e3,   year: 1437, icon: '🏚️' },
-  { id: 'b2',  city: 'Fès',            country: 'Maroc',       price: 43e3,   year: 1580, icon: '🏠' },
-  { id: 'b3',  city: 'Katmandou',      country: 'Népal',       price: 55e3,   year: 1596, icon: '🏠' },
-  { id: 'b4',  city: 'Iquitos',        country: 'Pérou',       price: 62e3,   year: 2036, icon: '🏡' },
-  { id: 'b5',  city: 'Tioumen',        country: 'Russie',      price: 69e3,   year: 1692, icon: '🏡' },
-  { id: 'b6',  city: 'Sydney',         country: 'Australie',   price: 120e3,  year: 1668, icon: '🏡' },
-  { id: 'b7',  city: 'Mexico',         country: 'Mexique',     price: 140e3,  year: 1912, icon: '🏘️' },
-  { id: 'b8',  city: 'Zagreb',         country: 'Croatie',     price: 210e3,  year: 1265, icon: '🏘️' },
-  { id: 'b9',  city: 'Belgrade',       country: 'Serbie',      price: 450e3,  year: 1363, icon: '🏘️' },
-  { id: 'b10', city: 'Le Cap',         country: 'Afrique du Sud', price: 1e6, year: 1618, icon: '🏢' },
-  { id: 'b11', city: 'New York',       country: 'États-Unis',  price: 17.5e6, year: 1288, icon: '🏙️' },
-  { id: 'b12', city: 'Monaco',         country: 'Monaco',      price: 30e6,   year: 1979, icon: '🌇' },
-  { id: 'b13', city: 'Beverly Hills',  country: 'États-Unis',  price: 55e6,   year: 1279, icon: '🏖️' },
-  { id: 'b14', city: 'Canberra',       country: 'Australie',   price: 90e6,   year: 1434, icon: '🏛️' },
-  { id: 'b15', city: 'Tokyo',          country: 'Japon',       price: 150e6,  year: 1616, icon: '🌆' },
-  { id: 'b16', city: 'Washington',     country: 'États-Unis',  price: 766e6,  year: 1592, icon: '🏛️' },
-  { id: 'b17', city: 'Silicon Valley', country: 'États-Unis',  price: 1.5e9,  year: 1959, icon: '🏢' },
-  { id: 'b18', city: 'Neuschwanstein', country: 'Allemagne',   price: 2.3e9,  year: 1809, icon: '🏰' },
-  { id: 'b19', city: 'Dubaï',          country: 'Émirats',     price: 2.7e9,  year: 1509, icon: '🌃' },
-  { id: 'b20', city: 'Zermatt',        country: 'Suisse',      price: 3.8e9,  year: 1898, icon: '🏔️' },
+  { id: 'b1',  city: 'Stavropol',      country: 'Russie',      price: 35e3,   year: 1437, style: 'cottage',   climate: 'cold' },
+  { id: 'b2',  city: 'Fès',            country: 'Maroc',       price: 43e3,   year: 1580, style: 'townhouse', climate: 'desert' },
+  { id: 'b3',  city: 'Katmandou',      country: 'Népal',       price: 55e3,   year: 1596, style: 'cottage',   climate: 'mountain' },
+  { id: 'b4',  city: 'Iquitos',        country: 'Pérou',       price: 62e3,   year: 2036, style: 'house',     climate: 'tropical' },
+  { id: 'b5',  city: 'Tioumen',        country: 'Russie',      price: 69e3,   year: 1692, style: 'cottage',   climate: 'cold' },
+  { id: 'b6',  city: 'Sydney',         country: 'Australie',   price: 120e3,  year: 1668, style: 'house',     climate: 'coastal' },
+  { id: 'b7',  city: 'Mexico',         country: 'Mexique',     price: 140e3,  year: 1912, style: 'townhouse', climate: 'warm' },
+  { id: 'b8',  city: 'Zagreb',         country: 'Croatie',     price: 210e3,  year: 1265, style: 'townhouse', climate: 'temperate' },
+  { id: 'b9',  city: 'Belgrade',       country: 'Serbie',      price: 450e3,  year: 1363, style: 'townhouse', climate: 'temperate' },
+  { id: 'b10', city: 'Le Cap',         country: 'Afrique du Sud', price: 1e6, year: 1618, style: 'villa',     climate: 'coastal' },
+  { id: 'b11', city: 'New York',       country: 'États-Unis',  price: 17.5e6, year: 1288, style: 'tower',     climate: 'urban' },
+  { id: 'b12', city: 'Monaco',         country: 'Monaco',      price: 30e6,   year: 1979, style: 'villa',     climate: 'coastal' },
+  { id: 'b13', city: 'Beverly Hills',  country: 'États-Unis',  price: 55e6,   year: 1279, style: 'villa',     climate: 'warm' },
+  { id: 'b14', city: 'Canberra',       country: 'Australie',   price: 90e6,   year: 1434, style: 'villa',     climate: 'temperate' },
+  { id: 'b15', city: 'Tokyo',          country: 'Japon',       price: 150e6,  year: 1616, style: 'tower',     climate: 'urban' },
+  { id: 'b16', city: 'Washington',     country: 'États-Unis',  price: 766e6,  year: 1592, style: 'palace',    climate: 'temperate' },
+  { id: 'b17', city: 'Silicon Valley', country: 'États-Unis',  price: 1.5e9,  year: 1959, style: 'tower',     climate: 'warm' },
+  { id: 'b18', city: 'Neuschwanstein', country: 'Allemagne',   price: 2.3e9,  year: 1809, style: 'castle',    climate: 'mountain' },
+  { id: 'b19', city: 'Dubaï',          country: 'Émirats',     price: 2.7e9,  year: 1509, style: 'tower',     climate: 'desert' },
+  { id: 'b20', city: 'Zermatt',        country: 'Suisse',      price: 3.8e9,  year: 1898, style: 'chalet',    climate: 'mountain' },
 ];
 
-/** 5 améliorations : coût en part du prix du bien, bonus de loyer. */
+/** 5 améliorations, toutes visibles sur la scène du bien. */
 export const UPGRADES = [
-  { id: 'internet',  name: 'Fibre très haut débit', costRate: 0.03, bonus: 0.06 },
-  { id: 'furniture', name: 'Mobilier neuf',          costRate: 0.06, bonus: 0.10 },
-  { id: 'parking',   name: 'Places de parking',      costRate: 0.09, bonus: 0.14 },
-  { id: 'repair',    name: 'Rénovation complète',    costRate: 0.14, bonus: 0.20 },
-  { id: 'appliance', name: 'Électroménager haut de gamme', costRate: 0.20, bonus: 0.25 },
+  { id: 'garden', name: 'Jardin paysager',   costRate: 0.03, bonus: 0.06, icon: '🌳' },
+  { id: 'wing',   name: 'Extension & terrasse', costRate: 0.06, bonus: 0.10, icon: '🏗️' },
+  { id: 'garage', name: 'Garage privé',      costRate: 0.09, bonus: 0.14, icon: '🚗' },
+  { id: 'solar',  name: 'Panneaux solaires', costRate: 0.14, bonus: 0.20, icon: '☀️' },
+  { id: 'pool',   name: 'Piscine',           costRate: 0.20, bonus: 0.25, icon: '🏊' },
 ];
 
 /* =================================================================
