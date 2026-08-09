@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060d">
+<title>Lab — prototypes de jeux</title>
+<meta name="description" content="Écosystème de prototypage : des MVP jouables en chaîne, filmés automatiquement en clips verticaux.">
+<link rel="stylesheet" href="css/lab.css">
+</head>
+<body>
+
+<header class="head">
+  <h1>LAB</h1>
+  <p class="sub">Prototypes jouables, filmés automatiquement.<br>
+     Ce qui capte le public passe en développement réel.</p>
+</header>
+
+<main id="grid" class="grid"></main>
+
+<footer class="foot">
+  <p>Chaque prototype tourne dans le même shell : format vertical, pilote automatique,
+     capture déterministe. <a href="https://github.com/kanemamine/Portfolio/tree/main/lab">Code</a> ·
+     <a href="../">Business Insider</a></p>
+</footer>
+
+<script type="module">
+import { GAMES } from './games/registry.js';
+
+const STATUS = {
+  mvp:     { label: 'MVP',      cls: 'st-mvp' },
+  testing: { label: 'EN TEST',  cls: 'st-testing' },
+  keeper:  { label: 'RETENU',   cls: 'st-keeper' },
+  parked:  { label: 'EN PAUSE', cls: 'st-parked' },
+};
+
+const grid = document.getElementById('grid');
+
+for (const g of GAMES) {
+  const st = STATUS[g.status] || STATUS.mvp;
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.style.setProperty('--accent', g.accent || '#37c8ff');
+  card.innerHTML = `
+    <a class="stage" href="play.html?g=${g.slug}" aria-label="Jouer à ${g.title}">
+      <div class="stage-fill" data-slug="${g.slug}"></div>
+      <span class="play">▶</span>
+    </a>
+    <div class="body">
+      <div class="row">
+        <h2>${g.title}</h2>
+        <span class="badge ${st.cls}">${st.label}</span>
+      </div>
+      <p class="hook">${g.hook}</p>
+      <p class="tagline">${g.tagline || ''}</p>
+      <ul class="tags">${(g.tags || []).map((t) => `<li>${t}</li>`).join('')}</ul>
+    </div>`;
+  grid.appendChild(card);
+}
+
+/* Aperçu vivant : le prototype se joue tout seul dans la vignette. Réservé aux
+   écrans larges et aux cartes visibles — trois moteurs WebGL en fond de page
+   sur mobile, c'est non. */
+if (window.matchMedia('(min-width: 760px)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting || e.target.dataset.loaded) continue;
+      e.target.dataset.loaded = '1';
+      const frame = document.createElement('iframe');
+      frame.loading = 'lazy';
+      frame.tabIndex = -1;
+      frame.setAttribute('aria-hidden', 'true');
+      frame.src = `play.html?g=${e.target.dataset.slug}&bot=1&mute=1&scale=0.3`;
+      e.target.appendChild(frame);
+      io.unobserve(e.target);
+    }
+  }, { rootMargin: '120px' });
+  document.querySelectorAll('.stage-fill').forEach((el) => io.observe(el));
+}
+</script>
+</body>
+</html>

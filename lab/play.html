@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#05060d">
+<title>Lab — prototype</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #05060d; overflow: hidden; }
+  body { display: grid; place-items: center; touch-action: none; -webkit-user-select: none; user-select: none; }
+  canvas { display: block; }
+  #err { position: fixed; inset: 0; display: none; place-items: center; padding: 6vw;
+         font: 600 15px/1.5 ui-monospace, monospace; color: #ff6b8a; text-align: center; }
+</style>
+</head>
+<body>
+<div id="err"></div>
+<script type="module">
+/* Shell universel : ?g=<slug> charge le prototype, le reste des paramètres est
+   lu par engine/shell.js (seed, bot, rec, format, scale, maxTime, mute). */
+const P = new URLSearchParams(location.search);
+const slug = (P.get('g') || '').replace(/[^a-z0-9-]/g, '');
+
+try {
+  if (!slug) throw new Error('paramètre ?g=<slug> manquant');
+  const [{ boot }, mod] = await Promise.all([
+    import('./engine/shell.js'),
+    import(`./games/${slug}/game.js`),
+  ]);
+  document.title = mod.default.meta.title + ' — Lab';
+  boot(mod.default);
+} catch (e) {
+  const el = document.getElementById('err');
+  el.style.display = 'grid';
+  el.textContent = 'Échec du chargement : ' + (e && e.message ? e.message : e);
+  window.__LAB_ERROR = String(e && e.stack || e);
+}
+</script>
+</body>
+</html>

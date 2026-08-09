@@ -27,6 +27,26 @@ Les ordres de grandeur proviennent de l'analyse des `ScriptableObject` du jeu de
 taux de dividende, capitalisations, coûts de fondation par secteur. Les textes, visuels et noms
 d'objets de l'original ne sont pas repris — contenu et habillage sont propres à ce projet.
 
+## Lab — usine à prototypes
+
+Le dossier [`lab/`](lab/) est un projet distinct : un écosystème pour sortir des
+MVP de jeu **en chaîne**, les filmer automatiquement en clips verticaux 1080×1920,
+et ne développer vraiment que ceux qui captent du public.
+
+🎮 **[kanemamine.github.io/Portfolio/lab/](https://kanemamine.github.io/Portfolio/lab/)**
+
+Un prototype = un fichier d'environ 150 lignes. Le reste — format vertical, HUD,
+juice, post-traitement néon, pilote automatique, capture déterministe, encodage
+H.264 — est mutualisé.
+
+```bash
+npm install
+node tools/new-game.mjs mon-jeu "Mon Jeu" "La règle en trois mots"
+node tools/capture.mjs mon-jeu        # → clips/mon-jeu-<graine>-<date>.mp4
+```
+
+Le mode d'emploi complet et la méthode de diffusion sont dans [`lab/README.md`](lab/README.md).
+
 ## Lancer en local
 
 ```bash

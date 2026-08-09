@@ -54,6 +54,10 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
 
+  // Le lab est un site à part (prototypes, moteur, capture) : il ne doit ni
+  // dépendre de ce cache ni le remplir. On le laisse passer au réseau.
+  if (url.pathname.includes('/lab/')) return;
+
   // Images : cache d'abord, elles ne changent pas de contenu à URL constante.
   if (isImage(url)) {
     e.respondWith(
