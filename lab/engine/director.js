@@ -40,9 +40,12 @@ export function makeDirector(run) {
     else if (d.phase === 'outro' && d.tp >= OUTRO) d.finished = true;
   };
 
-  /** Coupure de sécurité, en temps de jeu : un clip trop long ne sera pas regardé. */
+  /* Coupure de sécurité, comptée en secondes de vidéo (d.tp) et non en temps de
+     jeu : un prototype bourré de gels d'image et de ralentis étire fortement le
+     second par rapport au premier, et c'est la durée vue qui décide si le clip
+     est regardé jusqu'au bout. */
   d.checkCut = (r) => {
-    if (rec && d.phase === 'play' && r.cfg.maxTime && r.t > r.cfg.maxTime && r.state === 'play') r.gameOver();
+    if (rec && d.phase === 'play' && r.cfg.maxTime && d.tp > r.cfg.maxTime && r.state === 'play') r.gameOver();
   };
 
   d.onGameOver = () => {

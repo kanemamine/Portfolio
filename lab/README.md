@@ -95,7 +95,7 @@ node tools/capture-all.mjs --each 3                   # tout le catalogue, 3 var
 | Option | Défaut | À savoir |
 |---|---|---|
 | `--scale` | `0.6` | Résolution de rendu ; ffmpeg ré-agrandit en 1080×1920. Le rendu headless étant logiciel, c'est le principal levier de vitesse. |
-| `--seconds` | `20` | Durée max de gameplay. Au-delà, on perd le spectateur. |
+| `--seconds` | `20` | Durée max de gameplay **dans la vidéo**. Gels d'image et ralentis étirent le temps vu par rapport au temps de jeu : c'est bien la durée vue qui est bornée. |
 | `--scout` | `32` | Graines évaluées. Plus haut = meilleur run montré. |
 | `--offset` | `0` | Décale la fenêtre de graines : c'est ce qui rend les variantes réellement différentes. |
 

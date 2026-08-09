@@ -63,7 +63,9 @@ if (!opts.game) {
 
 const RENDER_W = Math.round(1080 * opts.scale / 2) * 2;   // dimensions paires : H.264 l'exige
 const RENDER_H = Math.round(1920 * opts.scale / 2) * 2;
-const MAX_FRAMES = Math.ceil((opts.seconds + 5) * opts.fps);
+/* Accroche (1,3 s) + gameplay + générique (2,4 s), avec de la marge : un clip
+   coupé à la limite ressort sans générique, donc sans appel à l'action. */
+const MAX_FRAMES = Math.ceil((opts.seconds + 8) * opts.fps);
 
 /* ---------------- Horloge verrouillée ----------------
    Injecté avant tout script de la page. On remplace requestAnimationFrame et
@@ -136,17 +138,19 @@ async function scout(page, base) {
     await page.waitForFunction('window.LAB && window.LAB.stats', null, { timeout: 15000, polling: 50 });
 
     /* Par paquets de 30 frames : moins d'allers-retours CDP, donc bien plus vite.
-       On coupe sur la même condition que la capture (mort, ou maxTime atteint),
-       sans quoi le score annoncé ne serait pas celui que montrera le clip. */
+       On compte les frames, pas le temps de jeu : c'est l'unité de la capture,
+       où gels et ralentis dissocient les deux. Sans ça le score annoncé ne
+       serait pas celui que montrera le clip. */
     let stats = null;
-    for (let f = 0; f < hardStop; f += 30) {
+    let frames = 0;
+    for (; frames < hardStop; frames += 30) {
       stats = await page.evaluate(() => {
         window.__CLOCK.step(30);
         return window.LAB.stats;
       });
-      if (stats.deaths > 0 || stats.t >= opts.seconds) break;
+      if (stats.deaths > 0 || frames + 30 >= opts.seconds * opts.fps) break;
     }
-    results.push({ seed, score: stats.score || stats.best, t: stats.t, died: stats.deaths > 0 });
+    results.push({ seed, score: stats.score || stats.best, t: frames / opts.fps, died: stats.deaths > 0 });
     process.stdout.write(`\r  repérage ${i + 1}/${opts.scout} — meilleur ${Math.max(...results.map(r => r.score))}   `);
   }
   process.stdout.write('\n');
@@ -202,7 +206,9 @@ async function capture(page, base, seed, outFile) {
 
   ff.stdin.end();
   await new Promise((ok, ko) => ff.on('close', (c) => (c === 0 ? ok() : ko(new Error('ffmpeg a échoué (code ' + c + ')')))));
-  return { frames, seconds: frames / opts.fps };
+  const truncated = frames >= MAX_FRAMES;
+  if (truncated) console.warn(`  ⚠ limite de ${MAX_FRAMES} images atteinte : le générique manque. Baisse --seconds.`);
+  return { frames, seconds: frames / opts.fps, truncated };
 }
 
 /* ---------------- Orchestration ---------------- */
