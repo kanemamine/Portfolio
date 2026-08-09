@@ -30,12 +30,12 @@ export const GAMES = [
     status: 'mvp',
   },
   {
-    slug: 'orb-merge',
-    title: 'Orb Merge',
-    hook: 'Deux pareilles fusionnent',
-    tagline: 'Une chaîne bien placée et tout le bocal s’allume.',
-    tags: ['merge', 'physique', 'chaîne'],
-    accent: '#b06bff',
+    slug: 'animal-merge',
+    title: 'Zoo Fusion',
+    hook: 'Deux pareils, un plus gros',
+    tagline: 'Du perroquet à l’éléphant. Une chaîne bien placée et la caisse explose.',
+    tags: ['fusion', 'physique', 'animaux'],
+    accent: '#ffab4d',
     status: 'mvp',
   },
   {

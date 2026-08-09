@@ -1,0 +1,14 @@
+Kenney Animal Pack
+CC0 1.0 Universal (domaine public) — Kenney.nl
+Source : https://kenney.nl/assets/animal-pack
+
+Fichiers conservés dans ce dossier :
+  elephant.png
+  giraffe.png
+  hippo.png
+  monkey.png
+  panda.png
+  parrot.png
+  penguin.png
+  pig.png
+  rabbit.png

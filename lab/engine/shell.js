@@ -18,9 +18,10 @@
 */
 
 import * as L from '../vendor/littlejs.esm.min.js';
-import { shaderCode, CONTROL_PX } from './shader.js';
+import { buildShader, CONTROL_PX } from './shader.js';
 import { makeDirector } from './director.js';
 import { FONT, textScreen, textWorld, dimScreen, fade, shade } from './draw.js';
+import { loadSprites } from './assets.js';
 
 export { L };
 export { FONT, textScreen, textWorld, dimScreen, fade, shade };
@@ -113,6 +114,25 @@ export function boot(game) {
     data: {},           // bac à sable libre pour le prototype
   };
 
+  /* ---------------- Sprites ---------------- */
+
+  let assets = null;
+
+  /** `TileInfo` d'un sprite déclaré dans `meta.sprites`. */
+  run.sprite = (name) => assets.get(name);
+
+  /** Dessine un sprite à une *largeur* donnée, en respectant ses proportions.
+      Les images ne sont pas carrées (des oreilles, des cornes dépassent), donc
+      caler sur la largeur garde la partie ronde à la bonne échelle. `anchorY`
+      décale le sprite pour aligner cette partie ronde sur le centre physique. */
+  run.drawSprite = (name, pos, width, opts = {}) => {
+    const t = assets.get(name);
+    const aspect = t.size.y / (t.size.x || 1);
+    const size = vec2(width, width * aspect);
+    const p = opts.anchorY ? pos.add(vec2(0, width * opts.anchorY)) : pos;
+    L.drawTile(p, size, t, opts.color || rgb(1, 1, 1), opts.angle || 0, opts.mirror || false);
+  };
+
   /* ---------------- Juice ---------------- */
 
   let shakeAmt = 0, hitstop = 0, flash = 0, aberration = 0, bloomBoost = 0;
@@ -179,7 +199,7 @@ export function boot(game) {
       run.best = Math.max(run.best, run.score);
       try { localStorage.setItem('lab.best.' + meta.slug, String(run.best)); } catch (e) { /* ignore */ }
       run.shake(1.6); run.flash(0.45); run.aberrate(1); run.slowmo(0.3, 0.45);
-      if (!cfg.mute) sfxFail.play();
+      run.sfx.fail.play();
       director.onGameOver(run);
     },
 
@@ -190,10 +210,33 @@ export function boot(game) {
 
   /* ---------------- Sons ---------------- */
   /* ZzFX : chaque son tient dans un tableau de nombres, zéro fichier. */
-  const sfxTap = new L.Sound([, , 420, , 0.02, 0.06, 1, 1.8, , , 180, 0.02, , , , , , 0.6, 0.02]);
-  const sfxScore = new L.Sound([, , 780, , 0.05, 0.14, , 1.6, , , 320, 0.05, , , , , , 0.7, 0.03]);
-  const sfxFail = new L.Sound([2, , 180, 0.02, 0.2, 0.4, 4, 1.5, , , , , , 0.6, , 0.4, , 0.5, 0.15]);
-  run.sfx = { tap: sfxTap, score: sfxScore, fail: sfxFail };
+  /* Chaque son est aussi journalisé en mode capture : c'est ce journal que
+     tools/audio.mjs rejoue hors-ligne pour fabriquer la piste du MP4. Sans lui
+     les clips restent muets, et une vidéo courte muette ne retient personne.
+     La position est comptée en images *rendues*, pas en temps de jeu — c'est le
+     temps de la vidéo. */
+  const audioLog = [];
+  let videoFrame = 0;
+  let warming = false;
+
+  function makeSfx(params) {
+    const sound = new L.Sound(params);
+    return {
+      params,
+      play(volume = 1, pitch = 1) {
+        if (cfg.rec && !warming) audioLog.push({ f: videoFrame, p: params, v: volume, r: pitch });
+        if (!cfg.mute) sound.play(undefined, volume, pitch);
+      },
+    };
+  }
+
+  run.sfx = {
+    tap: makeSfx([, , 420, , 0.02, 0.06, 1, 1.8, , , 180, 0.02, , , , , , 0.6, 0.02]),
+    score: makeSfx([, , 780, , 0.05, 0.14, , 1.6, , , 320, 0.05, , , , , , 0.7, 0.03]),
+    fail: makeSfx([2, , 180, 0.02, 0.2, 0.4, 4, 1.5, , , , , , 0.6, , 0.4, , 0.5, 0.15]),
+  };
+  /** Un prototype peut déclarer ses propres sons ZzFX : `r.makeSfx([...])`. */
+  run.makeSfx = makeSfx;
 
   /* ---------------- Pilote automatique ---------------- */
 
@@ -206,14 +249,15 @@ export function boot(game) {
   /* ---------------- Cycle LittleJS ---------------- */
 
   function gameInit() {
-    if (L.headlessMode) { startRound(); window.__BOOTED = true; return; }
+    if (L.headlessMode) { assets = loadSprites(meta.sprites); startRound(); window.__BOOTED = true; return; }
     L.setCanvasFixedSize(vec2(canvasW, canvasH));
     L.setCameraScale(canvasW / WORLD_W);
     L.setCameraPos(vec2(0, 0));
     L.setGravity(vec2(0, 0));
     L.setFontDefault(FONT);
     L.setSoundVolume(cfg.mute ? 0 : 0.4);
-    new L.PostProcessPlugin(shaderCode, true);
+    new L.PostProcessPlugin(buildShader(meta.fx), true);
+    assets = loadSprites(meta.sprites);
 
     try { run.best = +(localStorage.getItem('lab.best.' + meta.slug) || 0); } catch (e) { /* ignore */ }
 
@@ -239,6 +283,9 @@ export function boot(game) {
       Le repérage et la capture appliquent le même rodage, donc les deux runs
       restent identiques. */
   function warmUp(seconds) {
+    /* Le rodage précède la première image du clip : ses sons ne doivent pas
+       s'empiler à l'instant zéro de la piste audio. */
+    warming = true;
     const frames = Math.round(seconds * 60);
     for (let i = 0; i < frames && run.state === 'play'; i++) {
       const prevDown = run.down;
@@ -260,6 +307,7 @@ export function boot(game) {
     slowUntil = 0;
     popups.length = 0;
     L.engineObjectsDestroy();
+    warming = false;
   }
 
   function gameUpdate() {
@@ -333,6 +381,7 @@ export function boot(game) {
 
   function gameRenderPost() {
     if (L.headlessMode) return;
+    videoFrame++;
     director.tick();
     drawHUD(run);
     if (game.drawUI) game.drawUI(run);
@@ -352,9 +401,12 @@ export function boot(game) {
 
   /* ---------------- Décor et HUD communs ---------------- */
 
+  /* Le fond appartient au prototype : c'est lui qui situe l'action. La grille
+     néon ci-dessous n'est qu'un repli — neuf jeux qui la partagent, c'est neuf
+     jeux qui se ressemblent. */
   function drawBackground(r) {
+    if (game.background) { game.background(r); return; }
     L.drawRect(vec2(0, 0), vec2(r.W, r.H + 2), palette.bg);
-    /* Grille en perspective légère : lisible, peu coûteuse, très « néon ». */
     const grid = new L.Color(palette.a.r, palette.a.g, palette.a.b, 0.07);
     const step = 2;
     const off = (r.t * (meta.scroll || 0)) % step;
@@ -397,6 +449,13 @@ export function boot(game) {
     get done() { return director.finished; },
     get phase() { return director.phase; },
     get canvas() { return L.glCanvas || L.mainCanvas; },
+    /** Faux tant que les images ne sont pas décodées. La capture DOIT l'attendre :
+        elle fige l'horloge du navigateur alors que le décodage tourne sur des
+        timers réels, donc sans attente les premières images sortent vides. */
+    get ready() { return !!assets && assets.ready(); },
+    get missingSprites() { return assets ? assets.missing() : []; },
+    /** Journal des sons, consommé par tools/audio.mjs. */
+    get audioLog() { return audioLog; },
     /** À n'appeler que juste après le rendu d'une frame : le tampon WebGL n'est
         pas préservé d'une tâche à l'autre. */
     grab(quality = 0.94) { return this.canvas.toDataURL('image/jpeg', quality); },

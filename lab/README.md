@@ -5,9 +5,15 @@ mois sur une idée, on en sort beaucoup, on les filme, on les diffuse, et on lai
 le public désigner celle qui mérite un vrai développement.
 
 Pour que ce pari tienne, une seule chose compte : **le coût d'un prototype
-supplémentaire**. Ici il tombe à un fichier d'environ 150 lignes et une commande.
-Tout le reste — format vertical, HUD, particules, post-traitement néon, pilote
-automatique, capture vidéo, encodage — est mutualisé.
+supplémentaire**. Ici il tombe à un fichier d'environ 200 lignes et une commande.
+Tout le reste — format vertical, HUD, particules, post-traitement, sprites,
+pilote automatique, capture vidéo, piste sonore, encodage — est mutualisé.
+
+> **Leçon payée cher.** Les neuf premiers prototypes étaient des primitives
+> géométriques sous un filtre néon commun. Techniquement propres, invendables :
+> ni sujet, ni personnage, ni décor, ni son. Un prototype se juge à une seule
+> question — *quelqu'un qui voit trois secondes sans le son a-t-il envie d'y
+> jouer ?* Voir « Avant d'écrire une ligne » ci-dessous.
 
 ```
 idée  →  MVP jouable  →  clip vertical  →  diffusion  →  chiffres  →  on tranche
@@ -25,6 +31,58 @@ node tools/capture.mjs gravity-well
 ```
 
 Le clip sort dans `clips/`, en MP4 1080×1920, prêt à poster.
+
+## Avant d'écrire une ligne
+
+Quatre réponses, dans cet ordre. Sauter cette étape est exactement ce qui a
+produit neuf jeux que personne ne téléchargerait.
+
+1. **Le sujet** — qui je suis, où, ce que je veux. « Un carré qui évite des
+   barres » n'est pas un sujet.
+2. **La silhouette** — l'objet regardé 90 % du temps. Reconnaissable en
+   miniature, avec un visage ou une identité. Il vient de `meta.sprites`.
+3. **Le décor** — ce qui situe la scène, via `background(r)`. Sans lui le shell
+   retombe sur une grille passe-partout, et tous les prototypes se ressemblent.
+4. **La récompense** — ce qu'on *voit* quand ça se passe bien. Un nombre qui
+   monte n'en est pas une.
+
+Le sujet fait le plus gros du travail. Dans `animal-merge`, personne n'a besoin
+qu'on lui explique qu'un lapin est plus petit qu'un éléphant : la règle se
+comprend sans un mot, ce qui est la seule chose qui compte en vingt secondes.
+
+## Art
+
+```bash
+node tools/fetch-assets.mjs              # récupère les packs CC0 déclarés
+node tools/fetch-assets.mjs --list animals   # inspecte une archive
+```
+
+Le manifeste vit en tête de `tools/fetch-assets.mjs` : url, licence, et la liste
+**exacte** des fichiers à conserver — un pack pèse des méga-octets dont on
+n'utilise qu'une poignée, et tout ce qui atterrit dans `lab/art/` est committé
+puis servi par GitHub Pages. Chaque dossier reçoit son `LICENCE.txt`.
+
+Côté prototype, c'est déclaratif :
+
+```js
+meta.sprites = { panda: 'animals/panda.png' }
+// puis
+r.drawSprite('panda', pos, largeur, { angle, mirror, color, anchorY });
+r.sprite('panda')            // le TileInfo brut, si besoin de drawTile
+```
+
+LittleJS empaquette les images en planches de texture au fur et à mesure du
+décodage : aucun atlas à préparer. Le jour où de vrais assets arrivent,
+`loadAtlas()` lit TexturePacker et Aseprite — ce sera un échange de fichiers,
+pas une réécriture.
+
+> **Piège** : les images se décodent sur des timers réels alors que la capture
+> fige l'horloge du navigateur. Le shell expose `LAB.ready` et la capture
+> l'attend. Sans ça, les premières images du clip sortent sans sprites.
+
+L'art actuel vient des packs CC0 de [Kenney](https://kenney.nl) : gratuit, usage
+commercial, cohérent. Un joueur averti le reconnaît comme de l'asset gratuit —
+acceptable pour **tester la demande**, pas pour sortir un jeu.
 
 ## Anatomie d'un prototype
 
@@ -66,11 +124,17 @@ rend donc jamais `2`. Utilise la forme à un argument, `rng.int(n)` → `0…n-1
 | Juice | `r.impact(p)` (secousse + gel + aberration + bloom), `r.shake`, `r.hitstop`, `r.slowmo`, `r.flash` |
 | Effets | `r.burst(pos, couleur, n)`, `r.popup(pos, texte)` |
 | Fin | `r.gameOver()` — enchaîne sur le générique en mode capture |
-| Rendu | post-traitement néon commun : bloom, aberration chromatique, vignette, scanlines |
+| Sprites | `r.drawSprite(nom, pos, largeur, opts)`, `r.sprite(nom)` |
+| Son | `r.sfx.tap/score/fail`, `r.makeSfx([...ZzFX])` — journalisé pour la piste vidéo |
+| Rendu | post-traitement réglé par `meta.fx` : bloom, aberration, vignette, scanlines, saturation |
 
-Le post-traitement est un shader unique (`engine/shader.js`). LittleJS n'exposant
-que trois uniformes, le shell lui transmet l'intensité des effets en peignant un
-carré de contrôle de 8 px dans un coin, que le shader lit puis recouvre.
+Le post-traitement est un shader unique (`engine/shader.js`), mais **son dosage
+appartient au prototype**. Avant, un néon unique et très appuyé s'appliquait aux
+neuf jeux : le catalogue se lisait comme un seul objet, et le bloom délavait tout
+sprite. Les réglages de `meta.fx` sont injectés comme constantes GLSL à la
+compilation — LittleJS n'expose que trois uniformes, et ils servent déjà à
+transmettre les effets dynamiques (aberration, flash) via un carré de contrôle de
+8 px peint dans un coin, que le shader lit puis recouvre.
 
 ## La chaîne vidéo
 
@@ -85,6 +149,11 @@ carré de contrôle de 8 px dans un coin, que le shader lit puis recouvre.
    quelle que soit la machine.
 3. **Encodage.** Les images partent directement dans ffmpeg (aucun fichier
    intermédiaire) et ressortent en H.264 1080×1920, `+faststart`.
+4. **Son.** Le shell journalise chaque son déclenché, position comptée en images
+   rendues. `tools/audio.mjs` rejoue ce journal hors-ligne — générateur ZzFX
+   transcrit en Node — ajoute un lit musical pentatonique dont la densité suit
+   l'action, et rend un WAV muxé en AAC dans le MP4. Aucun fichier audio, aucun
+   droit à gérer, résultat déterministe.
 
 Le réalisateur (`engine/director.js`) monte le clip : **1,3 s d'accroche** (titre
 + hook), la partie, puis **2,4 s de générique** (score, titre, appel à l'action).

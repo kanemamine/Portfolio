@@ -24,10 +24,11 @@
 
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { spawn, execSync } from 'node:child_process';
+import { readFile, mkdir, writeFile, rm } from 'node:fs/promises';
+import { spawn, execSync, execFileSync } from 'node:child_process';
 import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderTrack } from './audio.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -169,7 +170,19 @@ async function capture(page, base, seed, outFile) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction('window.LAB && window.LAB.canvas', null, { timeout: 20000, polling: 50 });
 
+  /* Les images se décodent sur des timers réels, alors que la capture fige
+     l'horloge du navigateur. Sans cette attente, les premières frames du clip
+     sortent sans sprites. */
+  await page.waitForFunction('window.LAB.ready', null, { timeout: 30000, polling: 50 })
+    .catch(async () => {
+      const missing = await page.evaluate(() => window.LAB.missingSprites);
+      throw new Error(`images non chargées : ${missing.join(', ')} — vérifier meta.sprites et lab/art/`);
+    });
+
   const ffmpegPath = require('ffmpeg-static');
+  /* La vidéo est d'abord encodée muette, puis remuxée avec la piste rendue à
+     partir du journal des sons. */
+  const silentFile = outFile.replace(/\.mp4$/, '.muet.mp4');
   const ff = spawn(ffmpegPath, [
     '-hide_banner', '-loglevel', 'error', '-y',
     '-f', 'image2pipe', '-c:v', 'mjpeg', '-r', String(opts.fps), '-i', 'pipe:0',
@@ -177,7 +190,7 @@ async function capture(page, base, seed, outFile) {
     '-c:v', 'libx264', '-preset', 'slow', '-crf', String(opts.crf),
     '-profile:v', 'high', '-level', '4.1',
     '-movflags', '+faststart',
-    outFile,
+    silentFile,
   ], { stdio: ['pipe', 'inherit', 'inherit'] });
 
   const write = (buf) => new Promise((ok, ko) => {
@@ -208,7 +221,24 @@ async function capture(page, base, seed, outFile) {
   await new Promise((ok, ko) => ff.on('close', (c) => (c === 0 ? ok() : ko(new Error('ffmpeg a échoué (code ' + c + ')')))));
   const truncated = frames >= MAX_FRAMES;
   if (truncated) console.warn(`  ⚠ limite de ${MAX_FRAMES} images atteinte : le générique manque. Baisse --seconds.`);
-  return { frames, seconds: frames / opts.fps, truncated };
+
+  /* Piste sonore : rendue hors-ligne depuis le journal du shell, puis muxée.
+     Sans elle le clip est muet, et une vidéo courte muette ne retient pas. */
+  const log = await page.evaluate(() => window.LAB.audioLog);
+  const wavFile = outFile.replace(/\.mp4$/, '.wav');
+  await writeFile(wavFile, renderTrack(log, frames, opts.fps, !opts.noMusic));
+
+  execFileSync(ffmpegPath, [
+    '-hide_banner', '-loglevel', 'error', '-y',
+    '-i', silentFile, '-i', wavFile,
+    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k',
+    '-movflags', '+faststart', '-shortest',
+    outFile,
+  ]);
+  await rm(silentFile, { force: true });
+  await rm(wavFile, { force: true });
+
+  return { frames, seconds: frames / opts.fps, truncated, sounds: log.length };
 }
 
 /* ---------------- Orchestration ---------------- */

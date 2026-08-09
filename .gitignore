@@ -1,3 +1,4 @@
 node_modules/
 clips/
 package-lock.json
+.asset-cache/

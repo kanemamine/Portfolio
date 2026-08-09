@@ -1,21 +1,47 @@
-/* Post-traitement « tape à l'œil », partagé par tous les prototypes.
+/* Post-traitement, réglable par prototype.
 
-   Un seul shader plein écran fait le gros du travail visuel : bloom néon,
-   aberration chromatique, onde de choc, flash, vignette et scanlines. C'est lui
-   qui donne à un prototype de 150 lignes une allure de jeu fini — donc de vidéo
-   partageable.
+   Version précédente : un néon unique et très appuyé, appliqué aux neuf jeux.
+   Deux dégâts. Le catalogue se lisait comme un seul objet au lieu de neuf jeux,
+   et le bloom écrasait tout ce qui n'était pas une forme lumineuse sur fond noir
+   — donc rendait tout sprite laiteux et délavé.
 
-   LittleJS n'expose que trois uniformes (iChannel0, iResolution, iTime) : pas
-   moyen d'envoyer des paramètres depuis le jeu. On passe donc par une astuce
-   classique : le shell peint un carré de contrôle de quelques pixels dans le
-   coin bas-gauche de l'image, dont les canaux encodent l'intensité des effets.
-   Le shader le lit, s'en sert, puis le recouvre. Voir CONTROL_PX ci-dessous. */
+   Le prototype règle donc sa propre dose via `meta.fx`. Les valeurs sont
+   injectées comme constantes dans le source GLSL au moment de la compilation :
+   LittleJS n'expose que trois uniformes (iChannel0, iResolution, iTime), et ils
+   servent déjà à autre chose.
+
+   Reste dynamique, piloté par le jeu image par image : l'aberration, la
+   surcharge de bloom et le flash. Le shell les transmet en peignant un carré de
+   contrôle de quelques pixels dans le coin bas-gauche, que le shader lit puis
+   recouvre. */
 
 /** Taille (en pixels) du carré de contrôle peint par le shell. */
 export const CONTROL_PX = 8;
 
-export const shaderCode = `
-#define CTRL ${CONTROL_PX}.0
+/** Dosage par défaut : sobre. Un prototype à sprites ne veut presque pas de
+    bloom, un prototype vectoriel néon en veut beaucoup — à lui de le dire. */
+export const DEFAULT_FX = {
+  bloom: 0.35,        // intensité du halo sur les zones claires
+  bloomRadius: 22,    // en pixels d'une image de 1920 de haut
+  aberration: 0.4,    // multiplicateur de l'aberration chromatique dynamique
+  scanlines: 0,       // 0 = aucune. 0.04 suffit à donner un grain d'écran
+  vignette: 0.35,     // assombrissement des bords
+  saturation: 1.06,   // 1 = neutre
+};
+
+const glsl = (n) => (Number.isInteger(n) ? n.toFixed(1) : String(n));
+
+export function buildShader(fx = {}) {
+  const f = { ...DEFAULT_FX, ...fx };
+
+  return `
+#define CTRL ${glsl(CONTROL_PX)}
+#define BLOOM ${glsl(f.bloom)}
+#define BLOOM_RADIUS ${glsl(f.bloomRadius)}
+#define ABERRATION ${glsl(f.aberration)}
+#define SCANLINES ${glsl(f.scanlines)}
+#define VIGNETTE ${glsl(f.vignette)}
+#define SATURATION ${glsl(f.saturation)}
 
 // Canal de contrôle peint par le shell dans le coin bas-gauche :
 //   r = aberration chromatique   g = surcharge de bloom   b = flash blanc
@@ -28,8 +54,8 @@ float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.545
 // Bloom en une passe : 20 échantillons répartis sur le disque par l'angle d'or.
 // La rotation est décalée par pixel, sinon les échantillons se lisent comme des
 // copies fantômes du texte au lieu d'un halo.
-// Le rayon est exprimé en pixels d'une image 1920 de haut puis normalisé, pour
-// que le rendu soit identique quelle que soit la résolution de capture.
+// Le rayon est donné pour une image de 1920 de haut puis normalisé, pour que le
+// rendu soit identique quelle que soit la résolution de capture.
 vec3 bloom(vec2 uv, float radiusRef) {
   float radius = radiusRef * iResolution.y / 1920.0;
   float jitter = hash(gl_FragCoord.xy) * 6.2831853;
@@ -37,12 +63,12 @@ vec3 bloom(vec2 uv, float radiusRef) {
   float total = 0.0;
   for (int i = 0; i < 20; i++) {
     float f = (float(i) + 0.5) / 20.0;
-    float a = float(i) * 2.39996323 + jitter;   // angle d'or : couverture uniforme
+    float a = float(i) * 2.39996323 + jitter;
     vec2 off = vec2(cos(a), sin(a)) * sqrt(f) * radius / iResolution.xy;
     vec3 s = grab(uv + off);
     float w = 1.0 - f * 0.7;
     // On ne fait briller que ce qui dépasse déjà : garde les noirs bien noirs.
-    float lum = max(0.0, dot(s, vec3(0.299, 0.587, 0.114)) - 0.28);
+    float lum = max(0.0, dot(s, vec3(0.299, 0.587, 0.114)) - 0.5);
     sum += s * lum * w;
     total += w;
   }
@@ -54,18 +80,18 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
   vec2 uv  = fragCoord / res;
   vec3 ctrl = control();
 
-  float aberration = ctrl.r;
+  float aberration = ctrl.r * ABERRATION;
   float bloomBoost = ctrl.g;
   float flash      = ctrl.b;
 
   vec2 fromCenter = uv - 0.5;
   float dist = length(fromCenter);
 
-  // Aberration chromatique : nulle au centre, maximale sur les bords, pilotée
-  // par le jeu (impacts, explosions).
+  // Aberration chromatique : nulle au centre, maximale sur les bords, et pilotée
+  // par le jeu (impacts, explosions) plutôt que constante.
   vec3 col;
-  float ab = (0.0015 + aberration * 0.012) * dist;
-  if (ab > 0.0016) {
+  float ab = aberration * 0.014 * dist;
+  if (ab > 0.0004) {
     col.r = grab(uv + fromCenter * ab).r;
     col.g = grab(uv).g;
     col.b = grab(uv - fromCenter * ab).b;
@@ -73,23 +99,18 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
     col = grab(uv);
   }
 
-  // La surcharge reste volontairement modérée : au-delà, une longue chaîne
-  // blanchit l'image et le score devient illisible — l'inverse du but.
-  col += bloom(uv, 26.0 + bloomBoost * 26.0) * (1.6 + bloomBoost * 1.3);
+  if (BLOOM > 0.001)
+    col += bloom(uv, BLOOM_RADIUS * (1.0 + bloomBoost)) * (BLOOM + bloomBoost * BLOOM * 2.0);
 
-  // Vignette : concentre l'œil au centre, indispensable en format vertical.
-  col *= 1.0 - smoothstep(0.35, 0.95, dist) * 0.55;
+  col *= 1.0 - smoothstep(0.35, 0.95, dist) * VIGNETTE;
 
-  // Scanlines discrètes + léger balayage : donne une texture « écran ».
-  // Exprimées en fraction de hauteur, donc stables à toute résolution.
-  col *= 1.0 - 0.045 * sin(uv.y * 1080.0);
-  col *= 1.0 + 0.03 * sin(uv.y * 3.0 - iTime * 0.6);
+  if (SCANLINES > 0.001)
+    col *= 1.0 - SCANLINES * sin(uv.y * 1080.0);
 
   col = mix(col, vec3(1.0), flash);
 
-  // Saturation légèrement poussée : les couleurs claquent au format miniature.
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(vec3(lum), col, 1.18);
+  col = mix(vec3(lum), col, SATURATION);
 
   // On recouvre le carré de contrôle en recopiant le voisinage.
   if (fragCoord.x < CTRL && fragCoord.y < CTRL)
@@ -98,3 +119,4 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
   fragColor = vec4(col, 1.0);
 }
 `;
+}
