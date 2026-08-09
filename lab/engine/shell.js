@@ -57,6 +57,12 @@ export function boot(game) {
     scale: P.has('scale') ? +P.get('scale') : 1,
     maxTime: P.has('maxTime') ? +P.get('maxTime') : 0,
   };
+  /* Rodage : secondes de partie simulées avant que quoi que ce soit ne s'affiche.
+     Les genres à montée lente (gestion, tycoon) ont un début calme — or c'est
+     précisément la première seconde qui décide du partage. Le rodage permet de
+     filmer le milieu de partie. Le prototype peut en réclamer par défaut via
+     `meta.warmup`. */
+  cfg.warmup = P.has('warmup') ? +P.get('warmup') : (meta.warmup || 0);
   cfg.mute = P.get('mute') === '1' || cfg.rec;
   if (cfg.rec) cfg.bot = true;
   /* Mode sans rendu : sert au repérage de graines (tools/capture.mjs), où l'on
@@ -225,8 +231,36 @@ export function boot(game) {
     popups.length = 0;
     L.engineObjectsDestroy();
     game.reset(run);
+    if (cfg.warmup > 0) warmUp(cfg.warmup);
   }
   run.restart = startRound;
+
+  /** Avance la partie sans rien afficher, exactement comme la boucle normale.
+      Le repérage et la capture appliquent le même rodage, donc les deux runs
+      restent identiques. */
+  function warmUp(seconds) {
+    const frames = Math.round(seconds * 60);
+    for (let i = 0; i < frames && run.state === 'play'; i++) {
+      const prevDown = run.down;
+      if (cfg.bot) {
+        if (game.bot) game.bot(run);
+        if (botTapFrames > 0 && --botTapFrames === 0) botWant = false;
+        run.down = botWant;
+      }
+      run.pressed = run.down && !prevDown;
+      run.released = !run.down && prevDown;
+      run.dt = 1 / 60;
+      run.t += run.dt;
+      run.frame++;
+      game.update(run);
+    }
+    /* On entre en scène sur une image propre : ni secousse ni particule héritées
+       du rodage. */
+    shakeAmt = hitstop = flash = aberration = bloomBoost = 0;
+    slowUntil = 0;
+    popups.length = 0;
+    L.engineObjectsDestroy();
+  }
 
   function gameUpdate() {
     /* Hitstop : on gèle la logique mais on continue à rendre. */
@@ -333,8 +367,11 @@ export function boot(game) {
     const px = w / 1080;                       // échelle du HUD
     if (director.hideHUD) return;
 
-    textScreen(Math.floor(r.score), vec2(w / 2, h * 0.085), 150 * px,
-      palette.ink, 12 * px, new L.Color(0, 0, 0, 0.7));
+    /* Tous les prototypes ne comptent pas des points : un jeu de gestion affiche
+       un chiffre d'affaires. `meta.scoreSuffix` / `meta.scoreLabel` évitent de
+       forcer le vocabulaire arcade sur les autres genres. */
+    textScreen(Math.floor(r.score) + (meta.scoreSuffix || ''), vec2(w / 2, h * 0.085), 150 * px,
+      palette.ink, 12 * px, new L.Color(0, 0, 0, 0.7), 'center', w * 0.92);
 
     if (r.combo > 1) {
       const pop = 1 + 0.25 * Math.exp(-(r.t % 1) * 8);

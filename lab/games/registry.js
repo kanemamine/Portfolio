@@ -83,6 +83,15 @@ export const GAMES = [
     accent: '#4ab8ff',
     status: 'mvp',
   },
+  {
+    slug: 'shop-rush',
+    title: 'Boutique Rush',
+    hook: 'Vendre, refuser, ou attendre',
+    tagline: 'Le rayon est vide et la file s’allonge. Tu fais quoi ?',
+    tags: ['gestion', 'one-button', 'rush'],
+    accent: '#ffc247',
+    status: 'mvp',
+  },
   /* NEW_GAME_ANCHOR — tools/new-game.mjs insère ici. Ne pas retirer. */
 ];
 

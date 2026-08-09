@@ -20,7 +20,9 @@ const GRAVITY = 42;
 const RESTITUTION = 0.18;
 const ITER = 4;            // itérations de résolution des contacts
 const MAX_LEVEL = 8;
-const DROP_LEVELS = 4;     // rangs pouvant sortir du largueur
+/* Rangs pouvant sortir du largueur. Attention : `rng.int(n)` tire dans [0, n[ —
+   voir la note sur les bornes dans lab/README.md. */
+const DROP_LEVELS = 4;
 
 const radiusOf = (lvl) => 0.8 + lvl * 0.5;
 const colorOf = (lvl) => hsl((0.02 + lvl * 0.108) % 1, 0.85, 0.62);
@@ -50,8 +52,8 @@ export default {
     d.dropY = d.jarTop + 3.4;
     d.x = 0;
     d.dir = 1;
-    d.level = r.rng.int(0, DROP_LEVELS - 1);
-    d.nextLevel = r.rng.int(0, DROP_LEVELS - 1);
+    d.level = r.rng.int(DROP_LEVELS);
+    d.nextLevel = r.rng.int(DROP_LEVELS);
     d.cooldown = 0;
     d.overflow = 0;
     d.chain = 0;
@@ -72,7 +74,7 @@ export default {
     if (r.pressed && d.cooldown === 0) {
       d.orbs.push({ x: d.x, y: d.dropY, vx: 0, vy: -2, lvl: d.level, born: r.t });
       d.level = d.nextLevel;
-      d.nextLevel = r.rng.int(0, DROP_LEVELS - 1);
+      d.nextLevel = r.rng.int(DROP_LEVELS);
       d.cooldown = 0.22;
       if (!r.cfg.mute) r.sfx.tap.play();
     }

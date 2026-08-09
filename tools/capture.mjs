@@ -46,7 +46,7 @@ const opts = {
   fps: 60,
   crf: 20,
   out: 'clips',
-  keepIntro: true,
+  warmup: null,        // secondes simulées avant l'image 1 (sinon meta.warmup)
 };
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
@@ -215,7 +215,10 @@ async function capture(page, base, seed, outFile) {
 
 const { chromium } = loadPlaywright();
 const { server, port } = await serve();
-const base = `http://127.0.0.1:${port}/lab/play.html?g=${opts.game}&bot=1`;
+/* Le rodage est porté par l'URL de base : repérage et capture doivent partir du
+   même état de partie, sans quoi la graine retenue ne décrit plus le clip. */
+const warmupArg = opts.warmup == null ? '' : `&warmup=${opts.warmup}`;
+const base = `http://127.0.0.1:${port}/lab/play.html?g=${opts.game}&bot=1${warmupArg}`;
 
 const browser = await chromium.launch({
   args: [

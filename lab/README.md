@@ -53,6 +53,10 @@ Deux règles non négociables :
   redonne pas la même partie et toute la chaîne vidéo s'effondre.
 - **Aucune horloge réelle** — uniquement `r.dt` et `r.t`.
 
+Et un piège d'API qui a déjà coûté deux prototypes : `rng.int(a, b)` de LittleJS
+tire dans **`[b, a)`** — bornes inversées, supérieure exclue. `rng.int(0, 2)` ne
+rend donc jamais `2`. Utilise la forme à un argument, `rng.int(n)` → `0…n-1`.
+
 ## Ce que le shell fournit
 
 | | |
@@ -98,6 +102,7 @@ node tools/capture-all.mjs --each 3                   # tout le catalogue, 3 var
 | `--seconds` | `20` | Durée max de gameplay **dans la vidéo**. Gels d'image et ralentis étirent le temps vu par rapport au temps de jeu : c'est bien la durée vue qui est bornée. |
 | `--scout` | `32` | Graines évaluées. Plus haut = meilleur run montré. |
 | `--offset` | `0` | Décale la fenêtre de graines : c'est ce qui rend les variantes réellement différentes. |
+| `--warmup` | `meta.warmup` | Secondes de partie simulées avant l'image 1. Indispensable aux genres à montée lente : les 15 premières secondes d'un jeu de gestion sont vides, et c'est la première seconde qui décide du partage. |
 
 Ordre de grandeur observé ici (rendu logiciel, sans GPU) : ~7 im/s à `--scale 0.5`,
 soit environ 3 minutes pour un clip de 15 s. Sur une machine avec GPU, c'est
@@ -105,6 +110,25 @@ nettement plus rapide.
 
 > La chaîne s'arrête au fichier MP4. La publication reste manuelle : elle demande
 > des comptes et des identifiants que ce dépôt n'a pas — et n'a pas vocation à avoir.
+
+## Ce que le format impose au genre
+
+Tous les genres ne rentrent pas dans 20 secondes verticales, et c'est une
+information, pas un échec. Le test de `shop-rush` l'a montré : la mécanique
+marchait dès le premier jet, mais sa courbe — montée calme, agrandissements,
+débordement — dure une trentaine de secondes. Filmée depuis le début, elle donnait
+quinze secondes de boutique vide.
+
+Deux leviers, dans cet ordre :
+
+1. **`meta.warmup`** — on filme le milieu de partie au lieu du début. À préférer :
+   ça ne touche pas à l'équilibrage du jeu jouable.
+2. **Resserrer la courbe** — si même le milieu est mou, c'est le jeu qu'il faut
+   densifier, pas le montage.
+
+Et si le genre demande plusieurs décisions simultanées (prix, embauche,
+agencement), le bouton unique du shell ne suffit plus : il faudra lui ajouter un
+pointeur. Aucun prototype n'en a eu besoin jusqu'ici.
 
 ## Diffuser
 

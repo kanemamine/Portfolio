@@ -85,9 +85,10 @@ export function makeDirector(run) {
     dimScreen(0.76 * a);
 
     const pop = 1 + 0.14 * Math.exp(-d.tp * 5) * Math.cos(d.tp * 26);
-    textScreen('SCORE', vec(w / 2, h * 0.35), 54 * px, fade(accent, a), 9 * px, shade(0.8 * a));
-    textScreen(Math.floor(r.score), vec(w / 2, h * 0.45), 230 * px * pop,
-      fade(ink, a), 18 * px, shade(0.85 * a));
+    textScreen(meta.scoreLabel || 'SCORE', vec(w / 2, h * 0.35), 54 * px,
+      fade(accent, a), 9 * px, shade(0.8 * a), 'center', w * 0.86);
+    textScreen(Math.floor(r.score) + (meta.scoreSuffix || ''), vec(w / 2, h * 0.45), 230 * px * pop,
+      fade(ink, a), 18 * px, shade(0.85 * a), 'center', w * 0.92);
 
     textScreen(meta.title.toUpperCase(), vec(w / 2, h * 0.60), 88 * px,
       fade(ink, a), 12 * px, shade(0.85 * a), 'center', w * 0.88);
