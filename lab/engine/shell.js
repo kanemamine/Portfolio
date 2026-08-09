@@ -85,7 +85,14 @@ export function boot(game) {
     dt: 1 / 60,
     t: 0,
     frame: 0,
+    /* Hasard de jeu. Il ne doit être consommé QUE par la logique du prototype :
+       c'est ce qui garantit qu'une graine repérée sans rendu donne exactement la
+       même partie une fois filmée. */
     rng: new L.RandomGenerator(cfg.seed),
+    /* Hasard d'habillage (secousses, etc.), volontairement séparé : l'intro du
+       clip anime la caméra avant que le jeu ne démarre, et ces tirages
+       décaleraient tout le flux de jeu. */
+    fxRng: new L.RandomGenerator(cfg.seed ^ 0x9e3779b9),
 
     state: 'play',      // 'play' | 'over'
     score: 0,
@@ -214,6 +221,7 @@ export function boot(game) {
     run.combo = 0;
     run.t = 0;
     run.rng = new L.RandomGenerator(cfg.seed + run.deaths * 7919);
+    run.fxRng = new L.RandomGenerator((cfg.seed + run.deaths * 7919) ^ 0x9e3779b9);
     popups.length = 0;
     L.engineObjectsDestroy();
     game.reset(run);
@@ -262,9 +270,10 @@ export function boot(game) {
       if (p.life <= 0) popups.splice(i, 1);
     }
 
-    /* Secousse : appliquée à la caméra, jamais au monde. */
+    /* Secousse : appliquée à la caméra, jamais au monde — et tirée du hasard
+       d'habillage, pour ne pas perturber le déroulé de la partie. */
     const s = shakeAmt * 0.35;
-    L.setCameraPos(vec2(run.rng.float(-s, s), run.rng.float(-s, s)));
+    L.setCameraPos(vec2(run.fxRng.float(-s, s), run.fxRng.float(-s, s)));
   }
 
   function gameUpdatePost() {}

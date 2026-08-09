@@ -126,21 +126,25 @@ function loadPlaywright() {
 
 async function scout(page, base) {
   const results = [];
-  const budget = Math.ceil((opts.seconds + 2) * opts.fps);
+  /* Garde-fou : le repérage s'arrête sur le temps de jeu, comme la capture, mais
+     un prototype qui gèle ne doit pas bloquer la série. */
+  const hardStop = Math.ceil((opts.seconds + 8) * opts.fps);
 
   for (let i = 0; i < opts.scout; i++) {
     const seed = 1000 + ((i + opts.offset) * 2654435761) % 100000;
     await page.goto(`${base}&headless=1&seed=${seed}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction('window.LAB && window.LAB.stats', null, { timeout: 15000, polling: 50 });
 
-    /* Par paquets de 60 frames : moins d'allers-retours CDP, donc bien plus vite. */
+    /* Par paquets de 30 frames : moins d'allers-retours CDP, donc bien plus vite.
+       On coupe sur la même condition que la capture (mort, ou maxTime atteint),
+       sans quoi le score annoncé ne serait pas celui que montrera le clip. */
     let stats = null;
-    for (let f = 0; f < budget; f += 60) {
+    for (let f = 0; f < hardStop; f += 30) {
       stats = await page.evaluate(() => {
-        window.__CLOCK.step(60);
+        window.__CLOCK.step(30);
         return window.LAB.stats;
       });
-      if (stats.deaths > 0) break;
+      if (stats.deaths > 0 || stats.t >= opts.seconds) break;
     }
     results.push({ seed, score: stats.score || stats.best, t: stats.t, died: stats.deaths > 0 });
     process.stdout.write(`\r  repérage ${i + 1}/${opts.scout} — meilleur ${Math.max(...results.map(r => r.score))}   `);
