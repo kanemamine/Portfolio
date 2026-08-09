@@ -232,29 +232,37 @@ export function boot(game) {
     /* Hitstop : on gèle la logique mais on continue à rendre. */
     if (hitstop > 0) { hitstop -= 1 / 60; run.pressed = run.released = false; return; }
 
+    /* Pendant l'accroche du clip, la partie est gelée *entièrement* : ni temps de
+       jeu, ni pilote, ni logique. Sans ce gel total, la partie filmée ne démarre
+       pas dans le même état que celle repérée sans rendu — le bot jouerait dans
+       le vide pendant 1,3 s et le premier appui tomberait ailleurs. Or c'est
+       l'égalité stricte des deux runs qui donne son sens au repérage. */
+    const frozen = director.phase === 'intro';
+
     L.setTimeScale(run.t < slowUntil ? slowScale : 1);
-    run.dt = L.timeDelta;
-    run.t += run.dt;
-    run.frame++;
+    if (!frozen) {
+      run.dt = L.timeDelta;
+      run.t += run.dt;
+      run.frame++;
+    }
 
     /* Entrées : le bot et l'humain passent par le même canal. */
     const prevDown = run.down;
     if (cfg.bot) {
-      if (run.state === 'play' && game.bot) game.bot(run);
+      if (frozen) botWant = false;
+      else if (run.state === 'play' && game.bot) game.bot(run);
       if (botTapFrames > 0 && --botTapFrames === 0) botWant = false;
       run.down = botWant;
     } else {
-      run.down = L.mouseIsDown(0) || L.keyIsDown('Space') || L.keyIsDown('ArrowUp');
+      run.down = !frozen && (L.mouseIsDown(0) || L.keyIsDown('Space') || L.keyIsDown('ArrowUp'));
     }
     run.pressed = run.down && !prevDown;
     run.released = !run.down && prevDown;
 
-    director.checkCut(run);
-
-    if (run.state === 'play') {
-      if (director.phase !== 'intro') game.update(run);
-    } else if (run.pressed || (cfg.bot && director.wantsRestart())) {
-      startRound();
+    if (!frozen) {
+      director.checkCut(run);
+      if (run.state === 'play') game.update(run);
+      else if (run.pressed || (cfg.bot && director.wantsRestart())) startRound();
     }
 
     /* Décroissance des effets. */
